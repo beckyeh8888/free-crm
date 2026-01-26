@@ -351,6 +351,23 @@ a11y(form): 新增表單錯誤提示的 ARIA 標籤
 feat(user): 實作使用者註冊功能
 ```
 
+### Git 推送規則（重要）
+
+**每次 commit 後必須立即推送到 GitHub：**
+
+```bash
+# 標準流程
+git add [files]
+git commit -m "[類型]([範圍]): [簡述]"
+git push origin main
+```
+
+**規則：**
+1. 每次 commit 後**必須**執行 `git push`
+2. 不允許累積多個 commit 才推送
+3. 推送前確保通過 ESLint 檢查
+4. 推送失敗時立即處理衝突
+
 ### 加密交付
 
 客戶交付原始碼須：
