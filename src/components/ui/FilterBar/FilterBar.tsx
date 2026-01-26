@@ -1,0 +1,187 @@
+/**
+ * FilterBar Component - WCAG 2.2 AAA Compliant
+ *
+ * A flexible filter bar with search input and filter dropdowns.
+ */
+
+import { ReactNode, useCallback, useId } from 'react';
+import { TextInput } from '../TextInput';
+import { Select, SelectOption } from '../Select';
+import { Button } from '../Button';
+
+export interface FilterField {
+  /** Field key */
+  key: string;
+  /** Field label */
+  label: string;
+  /** Field type */
+  type: 'search' | 'select';
+  /** Placeholder text */
+  placeholder?: string;
+  /** Options for select type */
+  options?: SelectOption[];
+  /** Field width (CSS value) */
+  width?: string;
+}
+
+export interface FilterValues {
+  [key: string]: string;
+}
+
+export interface FilterBarProps {
+  /** Filter field definitions */
+  fields: FilterField[];
+  /** Current filter values */
+  values: FilterValues;
+  /** Callback when values change */
+  onChange: (values: FilterValues) => void;
+  /** Callback when search/filter is submitted */
+  onSubmit?: () => void;
+  /** Callback to clear all filters */
+  onClear?: () => void;
+  /** Show clear button */
+  showClear?: boolean;
+  /** Show submit button */
+  showSubmit?: boolean;
+  /** Submit button text */
+  submitText?: string;
+  /** Clear button text */
+  clearText?: string;
+  /** Loading state */
+  loading?: boolean;
+  /** Disabled state */
+  disabled?: boolean;
+  /** Additional actions to render */
+  actions?: ReactNode;
+  /** Layout direction */
+  layout?: 'horizontal' | 'vertical';
+  /** Compact mode */
+  compact?: boolean;
+}
+
+export function FilterBar({
+  fields,
+  values,
+  onChange,
+  onSubmit,
+  onClear,
+  showClear = true,
+  showSubmit = false,
+  submitText = '搜尋',
+  clearText = '清除',
+  loading = false,
+  disabled = false,
+  actions,
+  layout = 'horizontal',
+  compact = false,
+}: FilterBarProps) {
+  const id = useId();
+
+  const handleFieldChange = useCallback(
+    (key: string, value: string) => {
+      onChange({ ...values, [key]: value });
+    },
+    [values, onChange]
+  );
+
+  const handleClear = useCallback(() => {
+    const clearedValues: FilterValues = {};
+    fields.forEach((field) => {
+      clearedValues[field.key] = '';
+    });
+    onChange(clearedValues);
+    onClear?.();
+  }, [fields, onChange, onClear]);
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      onSubmit?.();
+    },
+    [onSubmit]
+  );
+
+  const hasValues = Object.values(values).some((v) => v && v.trim() !== '');
+
+  const fieldSize = compact ? 'sm' : 'md';
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className={`
+        ${layout === 'horizontal' ? 'flex flex-wrap items-end gap-4' : 'space-y-4'}
+      `}
+      role="search"
+      aria-label="篩選條件"
+    >
+      {fields.map((field) => (
+        <div
+          key={field.key}
+          className={layout === 'horizontal' ? '' : 'w-full'}
+          style={{ width: layout === 'horizontal' ? field.width : undefined }}
+        >
+          {field.type === 'search' ? (
+            <TextInput
+              id={`${id}-${field.key}`}
+              label={field.label}
+              placeholder={field.placeholder}
+              value={values[field.key] || ''}
+              onChange={(e) => handleFieldChange(field.key, e.target.value)}
+              disabled={disabled}
+              size={fieldSize}
+              type="search"
+              autoComplete="off"
+            />
+          ) : (
+            <Select
+              id={`${id}-${field.key}`}
+              label={field.label}
+              placeholder={field.placeholder}
+              options={field.options || []}
+              value={values[field.key] || ''}
+              onChange={(e) => handleFieldChange(field.key, e.target.value)}
+              disabled={disabled}
+              size={fieldSize}
+            />
+          )}
+        </div>
+      ))}
+
+      <div
+        className={`
+          flex items-center gap-2
+          ${layout === 'vertical' ? 'pt-2' : ''}
+          ${compact ? '' : 'pb-0.5'}
+        `}
+      >
+        {showSubmit && (
+          <Button
+            type="submit"
+            variant="primary"
+            size={fieldSize}
+            loading={loading}
+            disabled={disabled}
+          >
+            {submitText}
+          </Button>
+        )}
+
+        {showClear && hasValues && (
+          <Button
+            type="button"
+            variant="ghost"
+            size={fieldSize}
+            onClick={handleClear}
+            disabled={disabled || loading}
+          >
+            {clearText}
+          </Button>
+        )}
+
+        {actions}
+      </div>
+    </form>
+  );
+}
+
+export default FilterBar;

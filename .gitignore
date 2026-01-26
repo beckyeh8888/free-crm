@@ -45,3 +45,6 @@ next-env.d.ts
 # SQLite database
 *.db
 *.db-journal
+
+*storybook.log
+storybook-static
