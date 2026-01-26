@@ -118,3 +118,41 @@ export const documentAnalysisSchema = z.object({
 });
 
 export type DocumentAnalysisRequest = z.infer<typeof documentAnalysisSchema>;
+
+// ============================================
+// Deal CRUD Schemas
+// ============================================
+
+export const dealStageEnum = z.enum([
+  'lead',
+  'qualified',
+  'proposal',
+  'negotiation',
+  'closed_won',
+  'closed_lost',
+]);
+
+export const createDealSchema = z.object({
+  title: z.string().min(1, '請輸入商機名稱').max(200),
+  customerId: z.string().cuid('無效的客戶 ID'),
+  value: z.number().min(0).optional(),
+  currency: z.string().length(3).default('TWD'),
+  stage: dealStageEnum.default('lead'),
+  probability: z.number().min(0).max(100).default(0),
+  closeDate: z.string().datetime().optional(),
+  notes: z.string().max(5000).optional(),
+});
+
+export const updateDealSchema = createDealSchema.partial().omit({ customerId: true });
+
+export const dealFilterSchema = z.object({
+  search: z.string().optional(),
+  stage: dealStageEnum.optional(),
+  customerId: z.string().cuid().optional(),
+  minValue: z.coerce.number().optional(),
+  maxValue: z.coerce.number().optional(),
+});
+
+export type CreateDeal = z.infer<typeof createDealSchema>;
+export type UpdateDeal = z.infer<typeof updateDealSchema>;
+export type DealStage = z.infer<typeof dealStageEnum>;
