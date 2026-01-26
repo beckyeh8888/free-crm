@@ -44,9 +44,20 @@ export const customerSchema = z.object({
 
 export type Customer = z.infer<typeof customerSchema>;
 
-// Contact schema
+// Contact schema (for creation)
+export const createContactSchema = z.object({
+  name: nameSchema,
+  email: emailSchema.optional(),
+  phone: phoneSchema.optional(),
+  title: z.string().max(100).optional(),
+  isPrimary: z.boolean().default(false),
+});
+
+export const updateContactSchema = createContactSchema.partial();
+
+// Legacy contact schema (with customerId)
 export const contactSchema = z.object({
-  customerId: z.string().uuid(),
+  customerId: z.string().cuid(), // Fixed: cuid() instead of uuid()
   name: nameSchema,
   email: emailSchema.optional(),
   phone: phoneSchema.optional(),
@@ -56,9 +67,46 @@ export const contactSchema = z.object({
 
 export type Contact = z.infer<typeof contactSchema>;
 
-// Document analysis request schema
+// ============================================
+// Pagination & Filter Schemas
+// ============================================
+
+export const paginationSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+});
+
+export const customerFilterSchema = z.object({
+  search: z.string().optional(),
+  type: z.enum(['B2B', 'B2C']).optional(),
+  status: z.enum(['active', 'inactive', 'lead']).optional(),
+});
+
+// ============================================
+// Customer CRUD Schemas
+// ============================================
+
+export const createCustomerSchema = z.object({
+  name: z.string().min(1, '請輸入客戶名稱').max(100),
+  email: emailSchema.optional(),
+  phone: phoneSchema.optional(),
+  company: z.string().max(200).optional(),
+  type: z.enum(['B2B', 'B2C']).default('B2B'),
+  status: z.enum(['active', 'inactive', 'lead']).default('active'),
+  notes: z.string().max(5000).optional(),
+});
+
+export const updateCustomerSchema = createCustomerSchema.partial();
+
+export type CreateCustomer = z.infer<typeof createCustomerSchema>;
+export type UpdateCustomer = z.infer<typeof updateCustomerSchema>;
+
+// ============================================
+// Document Analysis Schema
+// ============================================
+
 export const documentAnalysisSchema = z.object({
-  documentId: z.string().uuid(),
+  documentId: z.string().cuid(), // Fixed: cuid() instead of uuid()
   analysisType: z.enum(['contract', 'email', 'meeting_notes', 'quotation']),
   options: z
     .object({
