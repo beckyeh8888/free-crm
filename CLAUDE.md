@@ -567,6 +567,180 @@ Customer 1 ──── N Contact
 
 ---
 
+## 文件更新規範（可稽核）
+
+### 更新觸發時機
+
+以下情況須執行 `/update-docs` 更新 Notion 文件：
+- 每次 git commit 後
+- 新增/修改/刪除 API 時
+- 新增/修改/刪除 UI 元件時
+- 資料庫 schema 變更時
+- 安全性修補時
+
+### 變更紀錄流水號規則
+
+每筆變更紀錄必須有唯一流水號，格式如下：
+
+```
+CHG-[類型]-[日期]-[序號]
+```
+
+| 欄位 | 格式 | 說明 |
+|------|------|------|
+| CHG | 固定 | Change 變更紀錄前綴 |
+| 類型 | 3字母 | DEV/API/UI/DB/SEC |
+| 日期 | YYYYMMDD | 變更日期 |
+| 序號 | 3位數 | 當日該類型的流水號 |
+
+**類型代碼：**
+
+| 代碼 | 說明 | 範例 |
+|------|------|------|
+| DEV | 一般開發變更 | `CHG-DEV-20260126-001` |
+| API | API 端點變更 | `CHG-API-20260126-001` |
+| UI | 前端元件變更 | `CHG-UI-20260126-001` |
+| DB | 資料庫變更 | `CHG-DB-20260126-001` |
+| SEC | 安全性修補 | `CHG-SEC-20260126-001` |
+
+### 更新紀錄格式
+
+每筆變更紀錄必須包含：
+
+| 項目 | 說明 | 範例 |
+|------|------|------|
+| 流水號 | CHG-XXX-YYYYMMDD-NNN | `CHG-API-20260126-001` |
+| 日期時間 | YYYY-MM-DD HH:mm | 2026-01-26 15:30 |
+| 變更類型 | [新增/修改/刪除/修復/安全] | [新增] |
+| 影響檔案 | 完整檔案路徑 | `src/app/api/customers/route.ts` |
+| commit hash | Git commit 短 hash | `abc1234` |
+| 變更說明 | 簡要描述變更內容 | 新增客戶 CRUD API |
+
+### 使用方式
+
+```bash
+# 更新開發紀錄
+/update-docs dev
+
+# 更新 API 文件
+/update-docs api
+
+# 更新前端元件文件
+/update-docs ui
+
+# 更新資料庫文件
+/update-docs db
+
+# 全部更新
+/update-docs all
+```
+
+### Notion 文件 ID 對照表
+
+| 文件 | Page ID |
+|------|---------|
+| Free CRM 專案 | `2f4fc190-4a3f-8140-affc-d49f21807ce0` |
+| 專案計畫書 | `2f4fc190-4a3f-81fc-a032-db82c3d30b5f` |
+| 需求規格書 | `2f4fc190-4a3f-8139-a04c-cbbacd71da0b` |
+| 開發紀錄 | `2f4fc190-4a3f-8125-b675-da557a0dcd25` |
+| API 文件 | `2f4fc190-4a3f-812f-9ff2-e94af1ec2aff` |
+| 前端元件文件 | `2f4fc190-4a3f-81a8-bdcf-e4df3eb70ead` |
+| 資料庫文件 | `2f4fc190-4a3f-8109-a2c3-c18145a48aa4` |
+| 風險評估報告 | `2f4fc190-4a3f-818d-a955-cd0af49d3743` |
+| PIA 報告 | `2f4fc190-4a3f-8142-ac76-debfc29a3ab4` |
+| AIIA 報告 | `2f4fc190-4a3f-81b5-8f39-d88acd5ae992` |
+
+### 稽核合規
+
+此文件更新機制符合以下 ISO 標準：
+- **ISO 27001 A.12.1.2** - 變更管理
+- **ISO 27001 A.12.4.1** - 事件日誌記錄
+- **ISO 29110 PM.4** - 軟體配置管理
+
+---
+
+## 測試規範（可稽核）
+
+### 測試分層架構
+
+| 層級 | 工具 | 目標 | 覆蓋率要求 |
+|------|------|------|------------|
+| 單元測試 | Vitest | 函數、元件 | > 80% |
+| 整合測試 | Vitest | API、資料庫 | > 70% |
+| E2E 測試 | Playwright | 使用者流程 | 關鍵路徑 100% |
+| 無障礙測試 | axe-core | WCAG 2.2 AAA | 100% 通過 |
+
+### 測試命令
+
+```bash
+# 單元測試
+npm run test:unit
+
+# 整合測試
+npm run test:integration
+
+# E2E 測試
+npm run test:e2e
+
+# E2E 測試（GUI 模式）
+npm run test:e2e:ui
+
+# 無障礙測試
+npm run test:a11y
+
+# 覆蓋率報告
+npm run test:coverage
+
+# 全部測試
+npm run test:all
+```
+
+### 測試檔案命名規範
+
+| 類型 | 位置 | 命名 |
+|------|------|------|
+| 單元測試 | `tests/unit/` | `*.test.ts` |
+| 整合測試 | `tests/integration/` | `*.test.ts` |
+| E2E 測試 | `tests/e2e/` | `*.spec.ts` |
+| HTTP 測試 | `tests/http/` | `*.http` |
+
+### 測試報告輸出
+
+```
+test-results/
+├── coverage/           # 覆蓋率報告 (HTML)
+├── playwright-report/  # E2E 報告 (HTML)
+├── screenshots/        # 失敗截圖
+└── junit.xml          # CI/CD 格式
+```
+
+### 測試紀錄格式（Notion）
+
+每次測試執行須記錄：
+
+```markdown
+### TEST-YYYYMMDD-NNN
+- **日期**: 2026-01-26 16:00
+- **類型**: [單元/整合/E2E/無障礙]
+- **結果**: ✅ 通過 / ❌ 失敗
+- **覆蓋率**: 85%
+- **失敗數**: 0
+- **截圖**: [連結]
+```
+
+### API 測試工具
+
+推薦使用 VS Code REST Client 擴展：
+
+```bash
+# 安裝擴展
+code --install-extension humao.rest-client
+```
+
+測試檔案位於 `tests/http/*.http`
+
+---
+
 ## PDCA 開發流程
 
 ### Plan 階段
