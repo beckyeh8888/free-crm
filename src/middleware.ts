@@ -1,14 +1,23 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
 /**
  * Security Middleware - ISO 27001 Compliant
  *
- * Implements security headers according to:
- * - OWASP Top 10
- * - CWE Top 25
+ * Implements:
+ * - Security headers (OWASP Top 10 / CWE Top 25)
+ * - Route protection with NextAuth
  */
-export function middleware(request: NextRequest) {
+
+import { NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
+import type { NextRequest } from 'next/server';
+
+// Routes that require authentication
+const protectedRoutes = ['/dashboard'];
+
+// Routes that should redirect to dashboard if already logged in
+const authRoutes = ['/login', '/register'];
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   const response = NextResponse.next();
 
   // Security Headers
@@ -40,18 +49,40 @@ export function middleware(request: NextRequest) {
     ].join('; ')
   );
 
+  // Route Protection
+  const token = await getToken({ req: request });
+
+  // Check if trying to access protected route without auth
+  const isProtectedRoute = protectedRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+
+  if (isProtectedRoute && !token) {
+    const url = new URL('/login', request.url);
+    url.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Check if trying to access auth routes while logged in
+  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+
+  if (isAuthRoute && token) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   return response;
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
+     * Match all request paths except:
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public files (images, etc)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.svg$).*)',
   ],
 };
