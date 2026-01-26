@@ -4,6 +4,8 @@
  * GET    /api/customers/[id] - Get a single customer
  * PATCH  /api/customers/[id] - Update a customer
  * DELETE /api/customers/[id] - Delete a customer
+ *
+ * Multi-tenant: Requires proper permissions and organization membership
  */
 
 import { NextRequest } from 'next/server';
@@ -14,6 +16,9 @@ import {
   errorResponse,
   logAudit,
   checkCustomerOwnership,
+  requirePermission,
+  getOrganizationId,
+  PERMISSIONS,
 } from '@/lib/api-utils';
 import { updateCustomerSchema } from '@/lib/validation';
 
@@ -24,6 +29,8 @@ interface RouteContext {
 /**
  * GET /api/customers/[id]
  * Get a single customer with contacts and deals
+ *
+ * Requires: customers:read permission
  */
 export async function GET(request: NextRequest, context: RouteContext) {
   const { session, error } = await requireAuth();
@@ -31,17 +38,28 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const { id } = await context.params;
 
-  // Check ownership
-  const { exists, isOwner } = await checkCustomerOwnership(
-    id,
-    session!.user.id
-  );
+  // First get the customer to know its organization
+  const customerCheck = await prisma.customer.findUnique({
+    where: { id },
+    select: {
+      organizationId: true,
+      createdById: true,
+      assignedToId: true,
+    },
+  });
 
-  if (!exists) {
+  if (!customerCheck) {
     return errorResponse('NOT_FOUND', '找不到此客戶');
   }
 
-  if (!isOwner) {
+  // Check ownership/access
+  const { hasAccess } = await checkCustomerOwnership(
+    id,
+    session!.user.id,
+    customerCheck.organizationId
+  );
+
+  if (!hasAccess) {
     return errorResponse('FORBIDDEN', '無權存取此客戶');
   }
 
@@ -55,6 +73,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
       deals: {
         orderBy: { createdAt: 'desc' },
         take: 10,
+      },
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      assignedTo: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
       },
       _count: {
         select: {
@@ -72,6 +104,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     entity: 'customer',
     entityId: id,
     userId: session!.user.id,
+    organizationId: customerCheck.organizationId,
     request,
   });
 
@@ -81,6 +114,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 /**
  * PATCH /api/customers/[id]
  * Update a customer
+ *
+ * Requires: customers:update permission
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const { session, error } = await requireAuth();
@@ -88,19 +123,38 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const { id } = await context.params;
 
-  // Check ownership
-  const { exists, isOwner } = await checkCustomerOwnership(
-    id,
-    session!.user.id
-  );
+  // First get the customer to know its organization
+  const customerCheck = await prisma.customer.findUnique({
+    where: { id },
+    select: {
+      organizationId: true,
+      createdById: true,
+      assignedToId: true,
+    },
+  });
 
-  if (!exists) {
+  if (!customerCheck) {
     return errorResponse('NOT_FOUND', '找不到此客戶');
   }
 
-  if (!isOwner) {
+  // Check ownership/access
+  const { hasAccess } = await checkCustomerOwnership(
+    id,
+    session!.user.id,
+    customerCheck.organizationId
+  );
+
+  if (!hasAccess) {
     return errorResponse('FORBIDDEN', '無權修改此客戶');
   }
+
+  // Check permission
+  const { error: permError } = await requirePermission(
+    session!,
+    customerCheck.organizationId,
+    PERMISSIONS.CUSTOMERS_UPDATE
+  );
+  if (permError) return permError;
 
   try {
     const body = await request.json();
@@ -116,11 +170,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const data = result.data;
 
-    // Check for duplicate email if updating email
+    // Check for duplicate email if updating email (within organization)
     if (data.email) {
       const existing = await prisma.customer.findFirst({
         where: {
-          userId: session!.user.id,
+          organizationId: customerCheck.organizationId,
           email: data.email,
           NOT: { id },
         },
@@ -142,6 +196,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         type: true,
         status: true,
         notes: true,
+        assignedToId: true,
       },
     });
 
@@ -158,6 +213,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         type: true,
         status: true,
         notes: true,
+        organizationId: true,
+        createdById: true,
+        assignedToId: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -169,6 +227,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       entity: 'customer',
       entityId: id,
       userId: session!.user.id,
+      organizationId: customerCheck.organizationId,
       details: {
         before,
         after: data,
@@ -186,6 +245,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 /**
  * DELETE /api/customers/[id]
  * Delete a customer (cascades to contacts, deals, documents)
+ *
+ * Requires: customers:delete permission
  */
 export async function DELETE(request: NextRequest, context: RouteContext) {
   const { session, error } = await requireAuth();
@@ -193,19 +254,38 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
   const { id } = await context.params;
 
-  // Check ownership
-  const { exists, isOwner } = await checkCustomerOwnership(
-    id,
-    session!.user.id
-  );
+  // First get the customer to know its organization
+  const customerCheck = await prisma.customer.findUnique({
+    where: { id },
+    select: {
+      organizationId: true,
+      createdById: true,
+      assignedToId: true,
+    },
+  });
 
-  if (!exists) {
+  if (!customerCheck) {
     return errorResponse('NOT_FOUND', '找不到此客戶');
   }
 
-  if (!isOwner) {
+  // Check ownership/access
+  const { hasAccess } = await checkCustomerOwnership(
+    id,
+    session!.user.id,
+    customerCheck.organizationId
+  );
+
+  if (!hasAccess) {
     return errorResponse('FORBIDDEN', '無權刪除此客戶');
   }
+
+  // Check permission
+  const { error: permError } = await requirePermission(
+    session!,
+    customerCheck.organizationId,
+    PERMISSIONS.CUSTOMERS_DELETE
+  );
+  if (permError) return permError;
 
   try {
     // Get customer info for audit before deletion
@@ -235,6 +315,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       entity: 'customer',
       entityId: id,
       userId: session!.user.id,
+      organizationId: customerCheck.organizationId,
       details: {
         name: customer?.name,
         email: customer?.email,

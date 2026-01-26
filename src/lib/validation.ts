@@ -94,6 +94,9 @@ export const createCustomerSchema = z.object({
   type: z.enum(['B2B', 'B2C']).default('B2B'),
   status: z.enum(['active', 'inactive', 'lead']).default('active'),
   notes: z.string().max(5000).optional(),
+  // Multi-tenant fields
+  organizationId: z.string().cuid().optional(), // Can be provided or inferred from context
+  assignedToId: z.string().cuid().optional(), // Assigned sales rep
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();
@@ -141,9 +144,20 @@ export const createDealSchema = z.object({
   probability: z.number().min(0).max(100).default(0),
   closeDate: z.string().datetime().optional(),
   notes: z.string().max(5000).optional(),
+  // Multi-tenant field
+  assignedToId: z.string().cuid().optional(), // Assigned sales rep
 });
 
-export const updateDealSchema = createDealSchema.partial().omit({ customerId: true });
+export const updateDealSchema = z.object({
+  title: z.string().min(1, '請輸入商機名稱').max(200).optional(),
+  value: z.number().min(0).optional(),
+  currency: z.string().length(3).optional(),
+  stage: dealStageEnum.optional(),
+  probability: z.number().min(0).max(100).optional(),
+  closeDate: z.string().datetime().optional().nullable(),
+  notes: z.string().max(5000).optional(),
+  assignedToId: z.string().cuid().optional().nullable(), // Can reassign
+});
 
 export const dealFilterSchema = z.object({
   search: z.string().optional(),

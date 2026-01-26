@@ -17,23 +17,44 @@ export default async function DashboardPage() {
   }
 
   // Fetch dashboard statistics
+  // For multi-tenant: show data where user is creator or assigned
   const [customerCount, dealCount, documentCount] = await Promise.all([
     prisma.customer.count({
-      where: { userId: session.user.id },
+      where: {
+        OR: [
+          { createdById: session.user.id },
+          { assignedToId: session.user.id },
+        ],
+      },
     }),
     prisma.deal.count({
       where: {
-        customer: { userId: session.user.id },
+        OR: [
+          { createdById: session.user.id },
+          { assignedToId: session.user.id },
+        ],
       },
     }),
     prisma.document.count({
-      where: { userId: session.user.id },
+      where: {
+        customer: {
+          OR: [
+            { createdById: session.user.id },
+            { assignedToId: session.user.id },
+          ],
+        },
+      },
     }),
   ]);
 
   // Fetch recent customers
   const recentCustomers = await prisma.customer.findMany({
-    where: { userId: session.user.id },
+    where: {
+      OR: [
+        { createdById: session.user.id },
+        { assignedToId: session.user.id },
+      ],
+    },
     orderBy: { createdAt: 'desc' },
     take: 5,
     select: {

@@ -2,6 +2,8 @@
  * Inngest Functions
  *
  * Background job handlers for async processing
+ *
+ * Multi-tenant: Functions operate within organization context
  */
 
 import { inngest } from './client';
@@ -29,6 +31,7 @@ export const analyzeDocument = inngest.createFunction(
       const eventData = event.data as Record<string, unknown>;
       const documentId = eventData?.documentId as string | undefined;
       const userId = eventData?.userId as string | undefined;
+      const organizationId = eventData?.organizationId as string | undefined;
 
       if (documentId) {
         await prisma.auditLog.create({
@@ -37,6 +40,7 @@ export const analyzeDocument = inngest.createFunction(
             entity: 'document_analysis',
             entityId: documentId,
             userId: userId,
+            organizationId: organizationId,
             details: JSON.stringify({
               status: 'failed',
               error: error.message,
@@ -48,7 +52,7 @@ export const analyzeDocument = inngest.createFunction(
   },
   { event: 'document/analyze.requested' },
   async ({ event, step }) => {
-    const { documentId, userId, analysisType, options } = event.data;
+    const { documentId, userId, organizationId, analysisType, options } = event.data;
 
     // Step 1: Fetch document
     const document = await step.run('fetch-document', async () => {
@@ -59,7 +63,13 @@ export const analyzeDocument = inngest.createFunction(
           name: true,
           content: true,
           type: true,
-          userId: true,
+          organizationId: true,
+          customer: {
+            select: {
+              createdById: true,
+              assignedToId: true,
+            },
+          },
         },
       });
 
@@ -67,7 +77,30 @@ export const analyzeDocument = inngest.createFunction(
         throw new Error('Document not found');
       }
 
-      if (doc.userId !== userId) {
+      // Verify access - user should be in the organization or have customer access
+      let hasAccess = false;
+
+      // Check via customer
+      if (doc.customer) {
+        hasAccess =
+          doc.customer.createdById === userId ||
+          doc.customer.assignedToId === userId;
+      }
+
+      // Check via organization membership
+      if (!hasAccess) {
+        const membership = await prisma.organizationMember.findUnique({
+          where: {
+            userId_organizationId: {
+              userId,
+              organizationId: doc.organizationId,
+            },
+          },
+        });
+        hasAccess = membership?.status === 'active';
+      }
+
+      if (!hasAccess) {
         throw new Error('Unauthorized access to document');
       }
 
@@ -123,6 +156,7 @@ export const analyzeDocument = inngest.createFunction(
           entity: 'document_analysis',
           entityId: analysis.id,
           userId,
+          organizationId: document.organizationId,
           details: JSON.stringify({
             documentId,
             analysisType,
@@ -140,6 +174,7 @@ export const analyzeDocument = inngest.createFunction(
         documentId,
         analysisId: analysis.id,
         userId,
+        organizationId: document.organizationId,
       },
     });
 

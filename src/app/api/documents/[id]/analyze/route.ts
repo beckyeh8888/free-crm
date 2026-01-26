@@ -5,6 +5,8 @@
  *
  * This endpoint queues a document for AI analysis using Inngest.
  * The actual analysis runs asynchronously in the background.
+ *
+ * Multi-tenant: Documents are accessed via organization membership
  */
 
 import { NextRequest } from 'next/server';
@@ -14,6 +16,8 @@ import {
   successResponse,
   errorResponse,
   logAudit,
+  requirePermission,
+  PERMISSIONS,
 } from '@/lib/api-utils';
 import { inngest } from '@/lib/inngest/client';
 import { z } from 'zod';
@@ -34,6 +38,55 @@ const analyzeOptionsSchema = z.object({
     })
     .optional(),
 });
+
+/**
+ * Check if user can access a document
+ * User can access if they are in the same organization
+ */
+async function canAccessDocument(
+  documentId: string,
+  userId: string
+): Promise<{ canAccess: boolean; organizationId?: string }> {
+  const document = await prisma.document.findUnique({
+    where: { id: documentId },
+    select: {
+      organizationId: true,
+      customer: {
+        select: {
+          createdById: true,
+          assignedToId: true,
+        },
+      },
+    },
+  });
+
+  if (!document) {
+    return { canAccess: false };
+  }
+
+  // Check if user has access via customer
+  if (document.customer) {
+    const hasAccess =
+      document.customer.createdById === userId ||
+      document.customer.assignedToId === userId;
+    return { canAccess: hasAccess, organizationId: document.organizationId };
+  }
+
+  // For org-level documents (no customer), check org membership
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: document.organizationId,
+      },
+    },
+  });
+
+  return {
+    canAccess: membership?.status === 'active',
+    organizationId: document.organizationId,
+  };
+}
 
 /**
  * POST /api/documents/[id]/analyze
@@ -65,7 +118,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const { id: documentId } = await context.params;
 
-  // Check document exists and belongs to user
+  // Check document exists and user can access
   const document = await prisma.document.findUnique({
     where: { id: documentId },
     select: {
@@ -73,7 +126,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       name: true,
       type: true,
       content: true,
-      userId: true,
+      organizationId: true,
     },
   });
 
@@ -81,7 +134,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return errorResponse('NOT_FOUND', '找不到此文件');
   }
 
-  if (document.userId !== session!.user.id) {
+  // Check access
+  const { canAccess, organizationId } = await canAccessDocument(
+    documentId,
+    session!.user.id
+  );
+
+  if (!canAccess) {
     return errorResponse('FORBIDDEN', '無權分析此文件');
   }
 
@@ -118,6 +177,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       data: {
         documentId,
         userId: session!.user.id,
+        organizationId,
         analysisType,
         options: analysisOptions,
       },
@@ -129,6 +189,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       entity: 'document_analysis_request',
       entityId: documentId,
       userId: session!.user.id,
+      organizationId,
       details: {
         documentName: document.name,
         analysisType,
@@ -159,12 +220,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const { id: documentId } = await context.params;
 
-  // Check document exists and belongs to user
+  // Check document exists and user can access
   const document = await prisma.document.findUnique({
     where: { id: documentId },
     select: {
       id: true,
-      userId: true,
+      organizationId: true,
     },
   });
 
@@ -172,7 +233,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return errorResponse('NOT_FOUND', '找不到此文件');
   }
 
-  if (document.userId !== session!.user.id) {
+  // Check access
+  const { canAccess, organizationId } = await canAccessDocument(
+    documentId,
+    session!.user.id
+  );
+
+  if (!canAccess) {
     return errorResponse('FORBIDDEN', '無權存取此文件');
   }
 
@@ -192,6 +259,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     entity: 'document_analysis',
     entityId: analysis.id,
     userId: session!.user.id,
+    organizationId,
     request,
   });
 

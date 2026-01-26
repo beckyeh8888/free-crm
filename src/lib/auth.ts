@@ -1,6 +1,8 @@
 /**
  * NextAuth Configuration
  * ISO 27001 Compliant Authentication
+ *
+ * Note: Roles are now handled via OrganizationMember, not on User model
  */
 
 import { NextAuthOptions } from 'next-auth';
@@ -25,10 +27,25 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
+          include: {
+            organizations: {
+              where: { status: 'active' },
+              include: {
+                organization: true,
+                role: true,
+              },
+              take: 1, // Get first/default organization
+            },
+          },
         });
 
         if (!user || !user.password) {
           throw new Error('電子郵件或密碼錯誤');
+        }
+
+        // Check if user is suspended
+        if (user.status === 'suspended') {
+          throw new Error('帳號已被停用，請聯繫管理員');
         }
 
         const isValid = await bcrypt.compare(
@@ -40,11 +57,25 @@ export const authOptions: NextAuthOptions = {
           throw new Error('電子郵件或密碼錯誤');
         }
 
+        // Update last login time
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        });
+
+        // Get default organization if exists
+        const defaultOrg = user.organizations[0];
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          image: user.image,
+          status: user.status,
+          // Include default organization context
+          defaultOrganizationId: defaultOrg?.organization.id,
+          defaultOrganizationName: defaultOrg?.organization.name,
+          defaultRole: defaultOrg?.role.name,
         };
       },
     }),
@@ -57,14 +88,20 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role;
+        token.status = (user as { status?: string }).status;
+        token.defaultOrganizationId = (user as { defaultOrganizationId?: string }).defaultOrganizationId;
+        token.defaultOrganizationName = (user as { defaultOrganizationName?: string }).defaultOrganizationName;
+        token.defaultRole = (user as { defaultRole?: string }).defaultRole;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
-        session.user.role = (token.role as string) || 'user';
+        session.user.status = (token.status as string) || 'active';
+        session.user.defaultOrganizationId = token.defaultOrganizationId as string | undefined;
+        session.user.defaultOrganizationName = token.defaultOrganizationName as string | undefined;
+        session.user.defaultRole = token.defaultRole as string | undefined;
       }
       return session;
     },
