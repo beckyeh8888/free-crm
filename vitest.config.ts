@@ -3,35 +3,35 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vitest/config';
 
-import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
-
-import { playwright } from '@vitest/browser-playwright';
-
 const dirname =
   typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
-// More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
+// Main vitest config for unit, integration, and accessibility tests
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(dirname, 'src'),
+    },
+  },
   test: {
-    projects: [
-      {
-        extends: true,
-        plugins: [
-          // The plugin will run tests for the stories defined in your Storybook config
-          // See options at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon#storybooktest
-          storybookTest({ configDir: path.join(dirname, '.storybook') }),
-        ],
-        test: {
-          name: 'storybook',
-          browser: {
-            enabled: true,
-            headless: true,
-            provider: playwright({}),
-            instances: [{ browser: 'chromium' }],
-          },
-          setupFiles: ['.storybook/vitest.setup.ts'],
-        },
+    globals: true,
+    include: ['**/tests/**/*.test.ts', '**/tests/**/*.test.tsx'],
+    exclude: ['node_modules', '.next'],
+    environment: 'node',
+    setupFiles: ['tests/setup.ts'],
+    // Coverage settings
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json'],
+      reportsDirectory: './test-results/coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.stories.{ts,tsx}', 'src/**/*.d.ts'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
       },
-    ],
+    },
   },
 });

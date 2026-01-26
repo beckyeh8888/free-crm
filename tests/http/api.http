@@ -1,0 +1,106 @@
+### Free CRM API Tests
+### Use REST Client extension in VS Code
+
+@baseUrl = http://localhost:3000/api
+@contentType = application/json
+
+### ============================================
+### Auth API
+### ============================================
+
+### Register new user
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Test User",
+  "email": "test@example.com",
+  "password": "Password1!"
+}
+
+### ============================================
+### Customer API
+### ============================================
+
+### List customers (requires auth)
+GET {{baseUrl}}/customers?page=1&limit=10
+
+### Create customer
+POST {{baseUrl}}/customers
+Content-Type: {{contentType}}
+
+{
+  "name": "New Customer",
+  "email": "customer@example.com",
+  "company": "Test Company",
+  "type": "B2B",
+  "status": "active"
+}
+
+### Get customer by ID
+GET {{baseUrl}}/customers/{{customerId}}
+
+### Update customer
+PATCH {{baseUrl}}/customers/{{customerId}}
+Content-Type: {{contentType}}
+
+{
+  "status": "inactive"
+}
+
+### Delete customer
+DELETE {{baseUrl}}/customers/{{customerId}}
+
+### ============================================
+### Deal API
+### ============================================
+
+### List deals
+GET {{baseUrl}}/deals?page=1&limit=10
+
+### Create deal
+POST {{baseUrl}}/deals
+Content-Type: {{contentType}}
+
+{
+  "title": "New Deal",
+  "customerId": "{{customerId}}",
+  "value": 10000,
+  "currency": "TWD",
+  "stage": "lead",
+  "probability": 20
+}
+
+### Get deal by ID
+GET {{baseUrl}}/deals/{{dealId}}
+
+### Update deal stage
+PATCH {{baseUrl}}/deals/{{dealId}}
+Content-Type: {{contentType}}
+
+{
+  "stage": "qualified",
+  "probability": 40
+}
+
+### Delete deal
+DELETE {{baseUrl}}/deals/{{dealId}}
+
+### ============================================
+### Contact API
+### ============================================
+
+### List contacts for customer
+GET {{baseUrl}}/customers/{{customerId}}/contacts
+
+### Create contact
+POST {{baseUrl}}/customers/{{customerId}}/contacts
+Content-Type: {{contentType}}
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "0912345678",
+  "title": "CEO",
+  "isPrimary": true
+}
