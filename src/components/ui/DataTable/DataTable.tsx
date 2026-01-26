@@ -6,7 +6,7 @@
 
 import { ReactNode } from 'react';
 import { EmptyState } from '../EmptyState';
-import { LoadingState, Skeleton } from '../LoadingState';
+import { Skeleton } from '../LoadingState';
 import { ErrorState } from '../ErrorState';
 
 export interface Column<T> {
@@ -99,7 +99,7 @@ export function DataTable<T>({
   // Error state
   if (error) {
     return (
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
+      <div className="border border-primary-200 dark:border-primary-700 rounded-lg">
         <ErrorState
           type="generic"
           title="載入資料失敗"
@@ -113,10 +113,10 @@ export function DataTable<T>({
   // Loading state with skeleton
   if (loading) {
     return (
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <div className="border border-primary-200 dark:border-primary-700 rounded-lg overflow-hidden">
         <table className="w-full" role="table" aria-busy="true">
           {caption && <caption className="sr-only">{caption} - 載入中</caption>}
-          <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <thead className="bg-primary-50 dark:bg-primary-800 border-b border-primary-200 dark:border-primary-700">
             <tr>
               {columns.map((column) => (
                 <th
@@ -124,7 +124,7 @@ export function DataTable<T>({
                   className={`
                     ${headerPadding}
                     text-left text-sm font-semibold
-                    text-gray-900 dark:text-gray-100
+                    text-primary-900 dark:text-primary-100
                   `}
                   style={{ width: column.width }}
                 >
@@ -133,7 +133,7 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-primary-200 dark:divide-primary-700">
             {Array.from({ length: skeletonRows }).map((_, rowIndex) => (
               <tr key={rowIndex}>
                 {columns.map((column) => (
@@ -152,7 +152,7 @@ export function DataTable<T>({
   // Empty state
   if (data.length === 0) {
     return (
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
+      <div className="border border-primary-200 dark:border-primary-700 rounded-lg">
         <EmptyState
           title={emptyTitle}
           description={emptyDescription}
@@ -164,11 +164,11 @@ export function DataTable<T>({
 
   // Data table
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+    <div className="border border-primary-200 dark:border-primary-700 rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full" role="table">
           {caption && <caption className="sr-only">{caption}</caption>}
-          <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <thead className="bg-primary-50 dark:bg-primary-800 border-b border-primary-200 dark:border-primary-700">
             <tr>
               {columns.map((column) => (
                 <th
@@ -176,7 +176,7 @@ export function DataTable<T>({
                   className={`
                     ${headerPadding}
                     text-sm font-semibold
-                    text-gray-900 dark:text-gray-100
+                    text-primary-900 dark:text-primary-100
                     ${column.align === 'center' ? 'text-center' : ''}
                     ${column.align === 'right' ? 'text-right' : 'text-left'}
                   `}
@@ -188,13 +188,13 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+          <tbody className="divide-y divide-primary-200 dark:divide-primary-700 bg-white dark:bg-primary-900">
             {data.map((row, rowIndex) => (
               <tr
                 key={keyExtractor(row, rowIndex)}
                 className={`
-                  ${striped && rowIndex % 2 === 1 ? 'bg-gray-50 dark:bg-gray-800/50' : ''}
-                  ${hoverable ? 'hover:bg-gray-100 dark:hover:bg-gray-800' : ''}
+                  ${striped && rowIndex % 2 === 1 ? 'bg-primary-50 dark:bg-primary-800/50' : ''}
+                  ${hoverable ? 'hover:bg-primary-100 dark:hover:bg-primary-800' : ''}
                   ${onRowClick ? 'cursor-pointer' : ''}
                   transition-colors
                 `}
@@ -223,7 +223,7 @@ export function DataTable<T>({
                       key={String(column.key)}
                       className={`
                         ${cellPadding}
-                        text-sm text-gray-700 dark:text-gray-300
+                        text-sm text-primary-700 dark:text-primary-300
                         ${column.align === 'center' ? 'text-center' : ''}
                         ${column.align === 'right' ? 'text-right' : 'text-left'}
                         ${column.truncate ? 'truncate max-w-xs' : ''}

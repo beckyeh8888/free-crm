@@ -23,13 +23,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles = {
   primary:
-    'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-400',
+    'bg-accent-600 text-white hover:bg-accent-700 focus:ring-accent-500 disabled:bg-accent-400',
   secondary:
-    'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500 disabled:bg-gray-100 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600',
+    'bg-primary-100 text-primary-700 hover:bg-primary-200 focus:ring-primary-500 disabled:bg-primary-100 disabled:text-primary-400 dark:bg-primary-800 dark:text-primary-200 dark:hover:bg-primary-700',
   danger:
-    'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-400',
+    'bg-error text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-400',
   ghost:
-    'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500 dark:text-gray-300 dark:hover:bg-gray-800',
+    'bg-transparent text-primary-600 hover:bg-primary-100 focus:ring-primary-500 dark:text-primary-300 dark:hover:bg-primary-800',
 };
 
 const sizeStyles = {
