@@ -11,6 +11,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(dirname, 'src'),
+      '@tests': path.resolve(dirname, 'tests'),
     },
   },
   test: {
@@ -19,6 +20,11 @@ export default defineConfig({
     exclude: ['node_modules', '.next'],
     environment: 'node',
     setupFiles: ['tests/setup.ts'],
+    // SQLite doesn't support concurrent writes - run tests sequentially
+    fileParallelism: false,
+    // Increase timeout for database operations
+    testTimeout: 30000,
+    hookTimeout: 30000,
     // Coverage settings
     coverage: {
       provider: 'v8',
