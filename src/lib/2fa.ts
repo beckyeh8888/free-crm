@@ -134,7 +134,7 @@ export function generateBackupCodes(): BackupCodes {
  */
 export function hashBackupCode(code: string): string {
   // Normalize the code (remove dashes, uppercase)
-  const normalized = code.replace(/-/g, '').toUpperCase();
+  const normalized = code.replaceAll('-', '').toUpperCase();
   return crypto.createHash('sha256').update(normalized).digest('hex');
 }
 

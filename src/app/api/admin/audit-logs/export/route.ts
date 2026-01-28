@@ -44,7 +44,7 @@ function escapeCSV(value: unknown): string {
 
   // Escape double quotes and wrap in quotes if contains special characters
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-    return `"${str.replace(/"/g, '""')}"`;
+    return `"${str.replaceAll('"', '""')}"`;
   }
 
   return str;

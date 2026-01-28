@@ -19,7 +19,7 @@ function createPrismaClient() {
     const relativePath = databaseUrl.replace('file:./', '').replace('file:', '');
     // Use path module for proper cross-platform path handling
     const absolutePath = path.resolve(process.cwd(), relativePath);
-    databaseUrl = `file:${absolutePath.replace(/\\/g, '/')}`;
+    databaseUrl = `file:${absolutePath.replaceAll('\\', '/')}`;
   }
 
   // Debug: log the database URL being used (only in development)
