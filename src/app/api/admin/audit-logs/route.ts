@@ -190,8 +190,8 @@ export async function GET(request: Request) {
 
     // 9. Include filter options in response metadata
     const filterOptions = {
-      actions: actions.map((a) => a.action).sort(),
-      entities: entities.map((e) => e.entity).sort(),
+      actions: actions.map((a) => a.action).sort((a, b) => a.localeCompare(b)),
+      entities: entities.map((e) => e.entity).sort((a, b) => a.localeCompare(b)),
       users: users
         .filter((u): u is typeof u & { user: NonNullable<typeof u.user> } => u.user !== null)
         .map((u) => ({
