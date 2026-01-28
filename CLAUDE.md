@@ -269,6 +269,124 @@ const API_KEY = process.env.API_KEY;
 
 ---
 
+## SonarQube 程式碼品質規範
+
+### ISO 27001 對應
+
+| 條款 | 要求 | SonarQube 功能 |
+|------|------|----------------|
+| A.12.6.1 | 技術弱點管理 | Security Hotspots + Vulnerabilities |
+| A.14.2.1 | 安全開發政策 | Quality Gate + Code Smells |
+| A.14.2.5 | 安全系統工程原則 | 規則集 + 最佳實踐檢查 |
+
+### 部署選項（免費）
+
+| 選項 | 適用場景 | 設定方式 |
+|------|----------|----------|
+| SonarCloud | 公開專案 | GitHub 登入 → Import 專案 |
+| SonarQube Community | 私有專案 | Docker 自架 |
+
+### SonarQube Docker 快速啟動
+
+```bash
+# 啟動 SonarQube Community Edition
+docker run -d --name sonarqube \
+  -p 9000:9000 \
+  -v sonarqube_data:/opt/sonarqube/data \
+  -v sonarqube_logs:/opt/sonarqube/logs \
+  sonarqube:community
+
+# 預設帳號: admin / admin
+# 登入後產生 Token 供 CI 使用
+```
+
+### 品質門檻 (Quality Gate)
+
+| 指標 | 門檻 | 說明 |
+|------|------|------|
+| 覆蓋率 | ≥ 80% | 新程式碼測試覆蓋率 |
+| 重複程式碼 | ≤ 3% | 重複區塊比例 |
+| 可維護性評級 | A | Code Smells 密度 |
+| 可靠性評級 | A | Bugs 密度 |
+| 安全性評級 | A | Vulnerabilities 密度 |
+| 安全熱點 | 已審查 | 無未審查的安全熱點 |
+
+### GitHub Secrets 設定
+
+| Secret | 說明 | 必要性 |
+|--------|------|--------|
+| `SONAR_TOKEN` | SonarQube/Cloud 存取 Token | 必要 |
+| `SONAR_HOST_URL` | 自架 SonarQube URL | 僅自架需要 |
+
+### GitHub Variables 設定
+
+| Variable | 說明 | 預設值 |
+|----------|------|--------|
+| `USE_SELF_HOSTED_SONAR` | 使用自架 SonarQube | `false` |
+| `SONAR_PROJECT_KEY` | 專案識別碼 | `free-crm` |
+| `SONAR_ORGANIZATION` | SonarCloud 組織 | - |
+
+### 相關檔案
+
+| 檔案 | 用途 |
+|------|------|
+| `sonar-project.properties` | SonarQube 專案設定 |
+| `.github/workflows/sonarqube.yml` | CI/CD 自動分析 |
+
+### 常見問題修復
+
+```typescript
+// ❌ SonarQube: Cognitive Complexity 過高
+function complexFunction() {
+  if (a) {
+    if (b) {
+      if (c) { /* 巢狀過深 */ }
+    }
+  }
+}
+
+// ✅ 重構：提早返回、拆分函數
+function improvedFunction() {
+  if (!a) return;
+  if (!b) return;
+  if (!c) return;
+  // 核心邏輯
+}
+
+// ❌ SonarQube: 不應忽略 Promise 返回值
+async function fetchData() {
+  fetch('/api/data'); // 未 await
+}
+
+// ✅ 正確處理 Promise
+async function fetchData() {
+  await fetch('/api/data');
+}
+
+// ❌ SonarQube: 硬編碼憑證
+const password = "admin123";
+
+// ✅ 使用環境變數
+const password = process.env.ADMIN_PASSWORD;
+```
+
+### 執行本地分析
+
+```bash
+# 安裝 sonar-scanner
+npm install -g sonarqube-scanner
+
+# 執行測試產生覆蓋率報告
+npm run test:coverage
+
+# 執行 SonarQube 分析
+sonar-scanner \
+  -Dsonar.host.url=http://localhost:9000 \
+  -Dsonar.token=YOUR_TOKEN
+```
+
+---
+
 ## 文件管理
 
 ### 三層架構
@@ -652,6 +770,8 @@ CHG-[類型]-[日期]-[序號]
 | 風險評估報告 | `2f4fc190-4a3f-818d-a955-cd0af49d3743` |
 | PIA 報告 | `2f4fc190-4a3f-8142-ac76-debfc29a3ab4` |
 | AIIA 報告 | `2f4fc190-4a3f-81b5-8f39-d88acd5ae992` |
+| 02-合規文件 | `2f4fc190-4a3f-81bd-8b2e-deb3fe9fd302` |
+| 程式碼品質報告 | `2f6fc190-4a3f-8106-a2d3-cf01ee1b6d8c` |
 
 ### 稽核合規
 
@@ -926,6 +1046,250 @@ code --install-extension humao.rest-client
 | ISO 27001 | A.12.4.1 事件日誌 | Claude 對話紀錄 |
 | ISO 29110 | PM.4 軟體配置管理 | Sprint 測試計畫 |
 | ISO 29110 | SI.5 軟體整合與測試 | 測試執行紀錄 |
+
+---
+
+## 第三方元件管理規範（ISO 27001 合規）
+
+### ISO 27001 對應條款
+
+| 條款 | 要求 | 對應功能 |
+|------|------|----------|
+| A.12.6.1 | 技術弱點管理 | 每日 `npm audit` 掃描 |
+| A.15.1.1 | 供應商關係的資訊安全政策 | 元件清單與審核流程 |
+| A.15.1.2 | 供應商協議中的安全處理 | 授權條款追蹤 |
+| A.18.1.2 | 智慧財產權 | 套件授權合規檢查 |
+
+### 元件審查命令
+
+```bash
+# 安全掃描
+npm run audit:security
+
+# 檢查過期套件
+npm run audit:outdated
+
+# 授權合規檢查
+npm run audit:license
+
+# 完整審查報告
+npm run audit:full
+
+# Markdown 格式報告
+npm run audit:report
+
+# 產生 SBOM (Software Bill of Materials)
+npm run audit:sbom
+```
+
+### 允許的授權清單
+
+| 授權 | 狀態 | 說明 |
+|------|------|------|
+| MIT | ✅ 允許 | 最寬鬆，無限制 |
+| Apache-2.0 | ✅ 允許 | 需保留版權聲明 |
+| ISC | ✅ 允許 | 類似 MIT |
+| BSD-2-Clause | ✅ 允許 | 需保留版權聲明 |
+| BSD-3-Clause | ✅ 允許 | 需保留版權聲明 |
+| MPL-2.0 | ⚠️ 審核 | 修改檔案需開源 |
+| GPL-3.0 | ❌ 禁止 | 需完整開源 |
+| LGPL | ⚠️ 審核 | 動態連結可接受 |
+| 未知/專有 | ❌ 禁止 | 需法務審核 |
+
+### 元件變更紀錄規則
+
+每次新增、刪除或升級套件時，必須：
+
+1. **記錄變更編號**：`DEP-YYYYMMDD-NNN`
+2. **Git commit 訊息格式**：
+   ```
+   deps([範圍]): [動作] [套件名稱]
+
+   [詳細說明]
+
+   變更編號: DEP-YYYYMMDD-NNN
+   ```
+
+3. **動作類型**：
+   | 動作 | 說明 |
+   |------|------|
+   | `add` | 新增套件 |
+   | `remove` | 移除套件 |
+   | `upgrade` | 升級版本 |
+   | `downgrade` | 降級版本 |
+
+4. **範例**：
+   ```
+   deps(security): add @sentry/nextjs for error tracking
+
+   - Added production dependency for error monitoring
+   - License: MIT (compliant)
+   - No known vulnerabilities
+
+   變更編號: DEP-20260128-001
+   ```
+
+### 變更風險等級
+
+| 變更類型 | 代碼 | 風險等級 | 需要審核 |
+|----------|------|----------|----------|
+| 新增套件 | ADD | 中-高 | 是 |
+| 刪除套件 | DEL | 低 | 是 |
+| 次版本升級 (patch) | UPG-P | 低 | 否 (自動) |
+| 次版本升級 (minor) | UPG-M | 中 | 建議 |
+| 主版本升級 (major) | UPG-J | 高 | 必須 |
+| 版本降級 | DWN | 高 | 必須 |
+
+### Notion 元件清單位置
+
+| 文件 | Notion 位置 |
+|------|-------------|
+| 元件清單 | `02-合規文件/第三方元件清單/Free-CRM-元件清單` |
+| 變更紀錄 | `02-合規文件/第三方元件清單/元件變更紀錄` |
+| 審查紀錄 | `02-合規文件/第三方元件清單/每日審查紀錄` |
+
+### CI/CD 自動審查
+
+GitHub Actions workflow 會在以下情況自動執行：
+
+1. **每日排程**：UTC 00:00 (台北 08:00)
+2. **依賴變更時**：`package.json` 或 `package-lock.json` 變更
+3. **手動觸發**：可選擇是否產生 SBOM
+
+**檢查項目**：
+- npm audit 安全掃描
+- 授權合規檢查
+- 過期套件報告
+- SBOM 產生 (CycloneDX 格式)
+
+### 新增套件審核流程
+
+```
+開發者需要新套件
+      ↓
+1. 確認是否有替代方案
+2. 檢查套件授權是否合規
+3. 檢查套件維護狀態
+4. 執行 npm audit 確認無漏洞
+      ↓
+┌─────────────────────────────────────┐
+│ 記錄到 Notion 元件變更紀錄           │
+│ 包含：套件名稱、版本、授權、用途、位置 │
+└─────────────────────────────────────┘
+      ↓
+npm install [套件]
+      ↓
+git commit -m "deps(xxx): add [套件名稱]"
+      ↓
+CI/CD 自動執行安全掃描
+```
+
+### 每日審查流程（Daily Audit）
+
+**重要**：過期套件及漏洞必須每天審查，避免安全問題。
+
+#### 審查紀錄存放位置
+
+| 類型 | 位置 |
+|------|------|
+| 本地紀錄 | `docs/compliance/audit-logs/YYYY-MM-DD-audit.md` |
+| Notion 紀錄 | `02-合規文件/第三方元件清單/每日審查紀錄` |
+
+#### 每日檢查清單
+
+```bash
+# 1. 執行安全掃描
+npm run audit:security
+
+# 2. 檢查過期套件
+npm run audit:outdated
+
+# 3. 產生完整報告
+npm run audit:full
+```
+
+#### 審查結果處理
+
+| 結果 | 行動 | 時限 |
+|------|------|------|
+| Critical/High 漏洞 | **立即修復**或移除套件 | 24 小時內 |
+| Moderate 漏洞 | 評估風險，規劃修復 | 7 天內 |
+| Low 漏洞 | 追蹤觀察 | 下次 Sprint |
+| 過期套件 (patch) | 自動更新 | 當日 |
+| 過期套件 (minor) | 評估後更新 | 7 天內 |
+| 過期套件 (major) | 規劃遷移 | 下次 Sprint |
+
+#### 無法立即修復的漏洞處理
+
+當漏洞存在於依賴鏈中（如 prisma → hono）且無法立即修復時：
+
+1. **風險評估**：記錄漏洞影響範圍（生產/開發環境）
+2. **緩解措施**：記錄可採取的臨時防護措施
+3. **追蹤計畫**：設定追蹤頻率和預期修復時間
+4. **文件化**：在審查紀錄中詳細說明
+
+#### 審查紀錄範本
+
+**文件編號**: `AUDIT-YYYYMMDD-NNN`
+
+```markdown
+# 第三方元件審查紀錄
+
+## 文件資訊
+
+| 項目 | 內容 |
+|------|------|
+| 文件編號 | AUDIT-YYYYMMDD-NNN |
+| 審查日期 | YYYY-MM-DD |
+| 審查人員 | [人員/Claude Code] |
+| 審查類型 | 安全掃描 + 過期檢查 + 授權合規 |
+
+## 執行摘要
+
+| 項目 | 數值 | 狀態 |
+|------|------|------|
+| 整體狀態 | PASS/REVIEW/WARNING/CRITICAL | ✅/⚠️/🟠/🔴 |
+| Critical 漏洞 | [N] | ✅/🔴 |
+| High 漏洞 | [N] | ✅/🔴 |
+| Moderate 漏洞 | [N] | ✅/⚠️ |
+| 過期套件 | [N] | ✅/⚠️ |
+| 授權合規 | [N]/[總數] | ✅/❌ |
+
+## 本次更新套件
+
+| 套件 | 舊版本 | 新版本 | 原因 |
+|------|--------|--------|------|
+| [套件名] | [舊] | [新] | [修復漏洞/Patch更新] |
+
+## 未修復漏洞分析
+
+### [漏洞等級]: [套件名稱]
+
+| CVE/Advisory | 說明 | 影響範圍 |
+|--------------|------|----------|
+| [CVE編號] | [漏洞說明] | [生產/開發環境] |
+
+**依賴鏈**: [root → dep1 → dep2 → 有漏洞的套件]
+**風險評估**: [低/中/高]，[評估原因]
+**修復方案**: [等待上游更新/替換套件/其他]
+
+## 後續追蹤
+
+- [ ] 追蹤 [套件] 更新以修復 [漏洞]
+- [ ] 下次審查日期: YYYY-MM-DD
+
+---
+*此報告符合 ISO 27001 A.12.6.1 技術弱點管理要求*
+```
+
+#### 整體狀態判定
+
+| 狀態 | 條件 |
+|------|------|
+| PASS | 無漏洞、授權合規、過期套件 ≤ 5 |
+| REVIEW | Moderate 漏洞或需審核授權 |
+| WARNING | 授權不合規或過期套件 > 10 |
+| CRITICAL | 有 Critical 或 High 漏洞 |
 
 ---
 

@@ -1,0 +1,260 @@
+# SonarCloud 分析報告與修復指引工作流程
+# ISO 27001 A.12.6.1 技術弱點管理
+# ISO 27001 A.14.2.1 安全開發政策
+#
+# 功能:
+# 1. 取得 SonarCloud 分析結果
+# 2. 同步報告到 Notion
+# 3. 產生修復指引 MD 檔，供 VS Code + Claude Code 使用
+
+name: SonarCloud Report & Fix Guide
+
+on:
+  # SonarCloud 分析完成後觸發
+  workflow_run:
+    workflows: ["SonarCloud Analysis"]
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+
+  # 手動觸發
+  workflow_dispatch:
+    inputs:
+      force_notion_sync:
+        description: '強制同步到 Notion'
+        required: false
+        default: 'false'
+        type: boolean
+
+# 避免同時執行多個
+concurrency:
+  group: sonarcloud-report-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Job 1: 取得 SonarCloud 分析結果
+  fetch-sonar-results:
+    name: Fetch SonarCloud Results
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    outputs:
+      total_issues: ${{ steps.fetch.outputs.total_issues }}
+      auto_fix_count: ${{ steps.generate.outputs.auto_fix_count }}
+      has_issues: ${{ steps.fetch.outputs.total_issues > 0 }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch SonarCloud issues
+        id: fetch
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: free-crm
+          SONAR_ORGANIZATION: beckyeh8888
+        run: node scripts/sonar/fetch-issues.js
+
+      - name: Generate fix tasks
+        id: generate
+        run: node scripts/sonar/generate-fixes.js
+
+      - name: Upload sonar results
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-results
+          path: sonar-results/
+          retention-days: 7
+
+      - name: Summary
+        run: |
+          echo "## 🔍 SonarCloud 問題摘要" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 類型 | 數量 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 總問題數 | ${{ steps.fetch.outputs.total_issues }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 可自動修復 | ${{ steps.generate.outputs.auto_fix_count }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 需安全審查 | ${{ steps.generate.outputs.security_review_count }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 需人工審查 | ${{ steps.generate.outputs.manual_review_count }} |" >> $GITHUB_STEP_SUMMARY
+
+  # Job 2: 同步到 Notion
+  sync-to-notion:
+    name: Sync to Notion
+    runs-on: ubuntu-latest
+    needs: fetch-sonar-results
+    if: ${{ needs.fetch-sonar-results.outputs.has_issues == 'true' || github.event.inputs.force_notion_sync == 'true' }}
+
+    outputs:
+      notion_page_url: ${{ steps.sync.outputs.notion_page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Download sonar results
+        uses: actions/download-artifact@v4
+        with:
+          name: sonar-results
+          path: sonar-results/
+
+      - name: Sync to Notion
+        id: sync
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_PARENT_PAGE_ID: ${{ secrets.NOTION_QUALITY_REPORT_PAGE_ID }}
+        run: node scripts/sonar/sync-to-notion.js
+
+      - name: Summary
+        run: |
+          echo "## 📝 Notion 同步完成" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "報告已同步到 Notion: ${{ steps.sync.outputs.notion_page_url }}" >> $GITHUB_STEP_SUMMARY
+
+  # Job 3: 產生修復指引並 Commit
+  generate-fix-guide:
+    name: Generate Fix Guide
+    runs-on: ubuntu-latest
+    needs: [fetch-sonar-results, sync-to-notion]
+    if: ${{ needs.fetch-sonar-results.outputs.auto_fix_count > 0 }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download sonar results
+        uses: actions/download-artifact@v4
+        with:
+          name: sonar-results
+          path: sonar-results/
+
+      - name: Prepare fix guide
+        run: |
+          mkdir -p docs/sonar-fixes
+
+          # 產生日期戳記的修復指引
+          DATE=$(date +%Y-%m-%d)
+          FIX_FILE="docs/sonar-fixes/fix-guide-${DATE}.md"
+
+          # 建立修復指引檔案
+          cat > "$FIX_FILE" << 'HEADER'
+          # SonarCloud 修復指引
+
+          > 此檔案由 GitHub Actions 自動產生，請在 VS Code 中使用 Claude Code 進行修復。
+
+          ## 使用方式
+
+          1. 在 VS Code 中開啟此專案
+          2. 開啟 Claude Code
+          3. 貼上以下指令：
+
+          ```
+          請根據 docs/sonar-fixes/fix-guide-${DATE}.md 的內容，修復列出的程式碼品質問題。
+          只修復 AUTO_FIX 類型的問題，不要修改安全相關的程式碼。
+          ```
+
+          ---
+
+          HEADER
+
+          # 附加修復內容
+          if [ -f "sonar-results/fix-prompt.md" ]; then
+            cat sonar-results/fix-prompt.md >> "$FIX_FILE"
+          fi
+
+          # 附加完整問題清單
+          echo "" >> "$FIX_FILE"
+          echo "---" >> "$FIX_FILE"
+          echo "" >> "$FIX_FILE"
+          echo "## 完整問題 JSON" >> "$FIX_FILE"
+          echo "" >> "$FIX_FILE"
+          echo "詳細問題資料請參考 GitHub Actions Artifacts 中的 \`sonar-results/\` 目錄。" >> "$FIX_FILE"
+          echo "" >> "$FIX_FILE"
+          echo "---" >> "$FIX_FILE"
+          echo "*此檔案符合 ISO 27001 A.12.6.1 技術弱點管理要求*" >> "$FIX_FILE"
+
+          # 更新最新修復指引的 symlink
+          echo "# 最新 SonarCloud 修復指引" > docs/sonar-fixes/LATEST.md
+          echo "" >> docs/sonar-fixes/LATEST.md
+          echo "最新修復指引: [fix-guide-${DATE}.md](fix-guide-${DATE}.md)" >> docs/sonar-fixes/LATEST.md
+          echo "" >> docs/sonar-fixes/LATEST.md
+          echo "Notion 報告: ${{ needs.sync-to-notion.outputs.notion_page_url }}" >> docs/sonar-fixes/LATEST.md
+
+      - name: Commit fix guide
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add docs/sonar-fixes/
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs(sonar): 更新 SonarCloud 修復指引 $(date +%Y-%m-%d)
+
+          - 總問題數: ${{ needs.fetch-sonar-results.outputs.total_issues }}
+          - 可修復數: ${{ needs.fetch-sonar-results.outputs.auto_fix_count }}
+          - Notion 報告: ${{ needs.sync-to-notion.outputs.notion_page_url }}
+
+          ISO 27001 A.12.6.1 技術弱點管理
+
+          Co-Authored-By: GitHub Actions <noreply@github.com>"
+
+            git push origin main
+          fi
+
+      - name: Summary
+        run: |
+          echo "## 📄 修復指引已產生" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "修復指引已 commit 到 \`docs/sonar-fixes/\` 目錄" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 下一步" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. \`git pull\` 取得最新修復指引" >> $GITHUB_STEP_SUMMARY
+          echo "2. 在 VS Code 開啟 Claude Code" >> $GITHUB_STEP_SUMMARY
+          echo "3. 請 Claude Code 根據 \`docs/sonar-fixes/LATEST.md\` 進行修復" >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: 通知
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [fetch-sonar-results, sync-to-notion, generate-fix-guide]
+    if: always()
+
+    steps:
+      - name: Final Summary
+        run: |
+          echo "## 📊 SonarCloud 報告執行結果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 項目 | 結果 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 取得結果 | ${{ needs.fetch-sonar-results.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Notion 同步 | ${{ needs.sync-to-notion.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 修復指引 | ${{ needs.generate-fix-guide.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 修復方式" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. 執行 \`git pull\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. 在 VS Code 使用 Claude Code 開啟 \`docs/sonar-fixes/LATEST.md\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. 請 Claude Code 進行修復" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*此工作流程符合 ISO 27001 A.12.6.1 技術弱點管理要求*" >> $GITHUB_STEP_SUMMARY

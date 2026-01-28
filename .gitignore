@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+test-results
+
+# SonarCloud
+/sonar-results
 
 # next.js
 /.next/
