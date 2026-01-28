@@ -27,6 +27,7 @@ on:
       - main
       - develop
     types: [opened, synchronize, reopened]
+  workflow_dispatch:  # 允許手動觸發
 
 jobs:
   sonarcloud:
