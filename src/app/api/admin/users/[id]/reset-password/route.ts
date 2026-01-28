@@ -91,14 +91,14 @@ export async function POST(
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission (need both ADMIN_USERS and ADMIN_USERS_UPDATE)
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_USERS_UPDATE
     );
@@ -190,11 +190,11 @@ export async function POST(
       action: 'password_reset',
       entity: 'user',
       entityId: member.user.id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId,
       targetUserId: member.user.id,
       after: {
-        resetBy: session!.user.id,
+        resetBy: session.user.id,
         forceChangeOnLogin,
         emailSent: sendEmail,
       },

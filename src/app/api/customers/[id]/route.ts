@@ -17,7 +17,6 @@ import {
   logAudit,
   checkCustomerOwnership,
   requirePermission,
-  getOrganizationId,
   PERMISSIONS,
 } from '@/lib/api-utils';
 import { updateCustomerSchema } from '@/lib/validation';
@@ -55,7 +54,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   // Check ownership/access
   const { hasAccess } = await checkCustomerOwnership(
     id,
-    session!.user.id,
+    session.user.id,
     customerCheck.organizationId
   );
 
@@ -103,7 +102,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     action: 'read',
     entity: 'customer',
     entityId: id,
-    userId: session!.user.id,
+    userId: session.user.id,
     organizationId: customerCheck.organizationId,
     request,
   });
@@ -140,7 +139,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   // Check ownership/access
   const { hasAccess } = await checkCustomerOwnership(
     id,
-    session!.user.id,
+    session.user.id,
     customerCheck.organizationId
   );
 
@@ -150,7 +149,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   // Check permission
   const { error: permError } = await requirePermission(
-    session!,
+    session,
     customerCheck.organizationId,
     PERMISSIONS.CUSTOMERS_UPDATE
   );
@@ -226,7 +225,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       action: 'update',
       entity: 'customer',
       entityId: id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId: customerCheck.organizationId,
       details: {
         before,
@@ -271,7 +270,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   // Check ownership/access
   const { hasAccess } = await checkCustomerOwnership(
     id,
-    session!.user.id,
+    session.user.id,
     customerCheck.organizationId
   );
 
@@ -281,7 +280,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
   // Check permission
   const { error: permError } = await requirePermission(
-    session!,
+    session,
     customerCheck.organizationId,
     PERMISSIONS.CUSTOMERS_DELETE
   );
@@ -314,7 +313,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       action: 'delete',
       entity: 'customer',
       entityId: id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId: customerCheck.organizationId,
       details: {
         name: customer?.name,

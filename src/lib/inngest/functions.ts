@@ -52,7 +52,9 @@ export const analyzeDocument = inngest.createFunction(
   },
   { event: 'document/analyze.requested' },
   async ({ event, step }) => {
-    const { documentId, userId, organizationId, analysisType, options } = event.data;
+    const { documentId, userId, analysisType } = event.data;
+    // organizationId and options are available in event.data but currently unused
+    // They can be accessed via event.data.organizationId and event.data.options if needed
 
     // Step 1: Fetch document
     const document = await step.run('fetch-document', async () => {

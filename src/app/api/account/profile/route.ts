@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const { session, error: authError } = await requireAuth();
     if (authError) return authError;
 
-    const userId = session!.user.id;
+    const userId = session.user.id;
 
     // 2. Get user with organization memberships
     const user = await prisma.user.findUnique({
@@ -132,7 +132,7 @@ export async function PATCH(request: Request) {
     const { session, error: authError } = await requireAuth();
     if (authError) return authError;
 
-    const userId = session!.user.id;
+    const userId = session.user.id;
 
     // 2. Parse and validate request body
     const body = await request.json();

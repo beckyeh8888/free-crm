@@ -16,8 +16,6 @@ import {
   successResponse,
   errorResponse,
   logAudit,
-  requirePermission,
-  PERMISSIONS,
 } from '@/lib/api-utils';
 import { inngest } from '@/lib/inngest/client';
 import { z } from 'zod';
@@ -137,7 +135,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   // Check access
   const { canAccess, organizationId } = await canAccessDocument(
     documentId,
-    session!.user.id
+    session.user.id
   );
 
   if (!canAccess) {
@@ -176,7 +174,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       name: 'document/analyze.requested',
       data: {
         documentId,
-        userId: session!.user.id,
+        userId: session.user.id,
         organizationId,
         analysisType,
         options: analysisOptions,
@@ -188,7 +186,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       action: 'create',
       entity: 'document_analysis_request',
       entityId: documentId,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId,
       details: {
         documentName: document.name,
@@ -236,7 +234,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   // Check access
   const { canAccess, organizationId } = await canAccessDocument(
     documentId,
-    session!.user.id
+    session.user.id
   );
 
   if (!canAccess) {
@@ -258,7 +256,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     action: 'read',
     entity: 'document_analysis',
     entityId: analysis.id,
-    userId: session!.user.id,
+    userId: session.user.id,
     organizationId,
     request,
   });

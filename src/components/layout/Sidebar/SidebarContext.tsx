@@ -14,10 +14,10 @@ import {
 } from 'react';
 
 interface SidebarContextType {
-  isCollapsed: boolean;
-  toggle: () => void;
-  expand: () => void;
-  collapse: () => void;
+  readonly isCollapsed: boolean;
+  readonly toggle: () => void;
+  readonly expand: () => void;
+  readonly collapse: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);

@@ -10,7 +10,7 @@ import { SidebarProvider, Sidebar } from './Sidebar';
 import { Header } from './Header';
 
 interface DashboardLayoutProps {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {

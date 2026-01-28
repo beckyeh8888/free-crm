@@ -11,17 +11,17 @@ import { Button } from '../Button';
 
 export interface FilterField {
   /** Field key */
-  key: string;
+  readonly key: string;
   /** Field label */
-  label: string;
+  readonly label: string;
   /** Field type */
-  type: 'search' | 'select';
+  readonly type: 'search' | 'select';
   /** Placeholder text */
-  placeholder?: string;
+  readonly placeholder?: string;
   /** Options for select type */
-  options?: SelectOption[];
+  readonly options?: SelectOption[];
   /** Field width (CSS value) */
-  width?: string;
+  readonly width?: string;
 }
 
 export interface FilterValues {
@@ -30,33 +30,33 @@ export interface FilterValues {
 
 export interface FilterBarProps {
   /** Filter field definitions */
-  fields: FilterField[];
+  readonly fields: readonly FilterField[];
   /** Current filter values */
-  values: FilterValues;
+  readonly values: FilterValues;
   /** Callback when values change */
-  onChange: (values: FilterValues) => void;
+  readonly onChange: (values: FilterValues) => void;
   /** Callback when search/filter is submitted */
-  onSubmit?: () => void;
+  readonly onSubmit?: () => void;
   /** Callback to clear all filters */
-  onClear?: () => void;
+  readonly onClear?: () => void;
   /** Show clear button */
-  showClear?: boolean;
+  readonly showClear?: boolean;
   /** Show submit button */
-  showSubmit?: boolean;
+  readonly showSubmit?: boolean;
   /** Submit button text */
-  submitText?: string;
+  readonly submitText?: string;
   /** Clear button text */
-  clearText?: string;
+  readonly clearText?: string;
   /** Loading state */
-  loading?: boolean;
+  readonly loading?: boolean;
   /** Disabled state */
-  disabled?: boolean;
+  readonly disabled?: boolean;
   /** Additional actions to render */
-  actions?: ReactNode;
+  readonly actions?: ReactNode;
   /** Layout direction */
-  layout?: 'horizontal' | 'vertical';
+  readonly layout?: 'horizontal' | 'vertical';
   /** Compact mode */
-  compact?: boolean;
+  readonly compact?: boolean;
 }
 
 export function FilterBar({
@@ -94,7 +94,7 @@ export function FilterBar({
   }, [fields, onChange, onClear]);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       onSubmit?.();
     },

@@ -10,9 +10,9 @@ import { ReactNode } from 'react';
 import { useSidebar } from './SidebarContext';
 
 export interface SidebarItemProps {
-  href: string;
-  label: string;
-  icon: ReactNode;
+  readonly href: string;
+  readonly label: string;
+  readonly icon: ReactNode;
 }
 
 export function SidebarItem({ href, label, icon }: SidebarItemProps) {

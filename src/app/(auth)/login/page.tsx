@@ -11,7 +11,7 @@
  * - High contrast colors (7:1 ratio)
  */
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -29,7 +29,7 @@ export default function LoginPage() {
     error === 'CredentialsSignin' ? '電子郵件或密碼錯誤' : null
   );
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setFormError(null);

@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
   // If no org specified, use user's default organization
   if (!organizationId) {
-    const defaultOrg = await getUserDefaultOrganization(session!.user.id);
+    const defaultOrg = await getUserDefaultOrganization(session.user.id);
     if (defaultOrg) {
       organizationId = defaultOrg.organization.id;
     }
@@ -69,8 +69,8 @@ export async function GET(request: NextRequest) {
   // Show deals that user created or is assigned to
   const where = {
     OR: [
-      { createdById: session!.user.id },
-      { assignedToId: session!.user.id },
+      { createdById: session.user.id },
+      { assignedToId: session.user.id },
     ],
     ...(organizationId && {
       customer: {
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
   await logAudit({
     action: 'read',
     entity: 'deal',
-    userId: session!.user.id,
+    userId: session.user.id,
     organizationId: organizationId || undefined,
     details: { count: deals.length, filters },
     request,
@@ -175,8 +175,8 @@ export async function POST(request: NextRequest) {
       where: {
         id: data.customerId,
         OR: [
-          { createdById: session!.user.id },
-          { assignedToId: session!.user.id },
+          { createdById: session.user.id },
+          { assignedToId: session.user.id },
         ],
       },
       select: {
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
 
     // Check permission
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       customer.organizationId,
       PERMISSIONS.DEALS_CREATE
     );
@@ -208,8 +208,8 @@ export async function POST(request: NextRequest) {
         probability: data.probability,
         closeDate: data.closeDate ? new Date(data.closeDate) : null,
         notes: data.notes,
-        createdById: session!.user.id,
-        assignedToId: data.assignedToId || session!.user.id, // Default to creator
+        createdById: session.user.id,
+        assignedToId: data.assignedToId || session.user.id, // Default to creator
       },
       select: {
         id: true,
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
       action: 'create',
       entity: 'deal',
       entityId: deal.id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId: customer.organizationId,
       details: { title: deal.title, customerId: data.customerId, value: deal.value },
       request,

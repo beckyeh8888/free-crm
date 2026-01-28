@@ -12,13 +12,15 @@ import { forwardRef, ButtonHTMLAttributes, ReactNode } from 'react';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Button visual variant */
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  readonly variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   /** Button size */
-  size?: 'sm' | 'md' | 'lg';
+  readonly size?: 'sm' | 'md' | 'lg';
   /** Show loading spinner */
-  loading?: boolean;
+  readonly loading?: boolean;
+  /** Button type - defaults to 'button' for safety (WCAG/S6819) */
+  readonly type?: 'button' | 'submit' | 'reset';
   /** Button content */
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 const variantStyles = {
@@ -45,6 +47,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size = 'md',
       loading = false,
       disabled,
+      type = 'button',
       children,
       className = '',
       ...props
@@ -56,6 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         disabled={isDisabled}
         aria-busy={loading}
         aria-disabled={isDisabled}

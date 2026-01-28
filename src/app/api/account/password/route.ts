@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const { session, error: authError } = await requireAuth();
     if (authError) return authError;
 
-    const userId = session!.user.id;
+    const userId = session.user.id;
 
     // 2. Parse and validate request body
     const body = await request.json();
@@ -112,10 +112,9 @@ export async function POST(request: Request) {
     });
 
     // 8. Invalidate other sessions (optional security measure)
-    // Keep the current session active
-    const currentSessionToken = request.headers.get('authorization')?.replace('Bearer ', '');
-
     // Note: In a production system, you might want to invalidate other sessions
+    // and keep only the current session active using:
+    // const currentSessionToken = request.headers.get('authorization')?.replace('Bearer ', '');
     // For now, we'll just log the password change
 
     // 9. Log audit

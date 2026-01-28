@@ -39,7 +39,7 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        if (!user || !user.password) {
+        if (!user?.password) {
           throw new Error('電子郵件或密碼錯誤');
         }
 

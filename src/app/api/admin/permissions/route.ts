@@ -46,14 +46,14 @@ export async function GET(request: Request) {
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission (any admin role permission is sufficient)
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_ROLES
     );

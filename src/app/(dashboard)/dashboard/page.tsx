@@ -9,6 +9,19 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 
+// Status styling mappings (extracted from nested ternary - S3358)
+const customerStatusStyles: Record<string, string> = {
+  active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  lead: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+};
+
+const customerStatusLabels: Record<string, string> = {
+  active: '活躍',
+  lead: '潛在',
+  inactive: '停用',
+};
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
@@ -226,18 +239,10 @@ export default async function DashboardPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            customer.status === 'active'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : customer.status === 'lead'
-                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            customerStatusStyles[customer.status] || customerStatusStyles.inactive
                           }`}
                         >
-                          {customer.status === 'active'
-                            ? '活躍'
-                            : customer.status === 'lead'
-                              ? '潛在'
-                              : '停用'}
+                          {customerStatusLabels[customer.status] || customerStatusLabels.inactive}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">

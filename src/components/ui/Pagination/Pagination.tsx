@@ -6,21 +6,21 @@
 
 export interface PaginationProps {
   /** Current page (1-indexed) */
-  currentPage: number;
+  readonly currentPage: number;
   /** Total number of pages */
-  totalPages: number;
+  readonly totalPages: number;
   /** Callback when page changes */
-  onPageChange: (page: number) => void;
+  readonly onPageChange: (page: number) => void;
   /** Number of visible page buttons (default: 5) */
-  visiblePages?: number;
+  readonly visiblePages?: number;
   /** Show first/last buttons */
-  showFirstLast?: boolean;
+  readonly showFirstLast?: boolean;
   /** Show prev/next buttons */
-  showPrevNext?: boolean;
+  readonly showPrevNext?: boolean;
   /** Disabled state */
-  disabled?: boolean;
+  readonly disabled?: boolean;
   /** Size variant */
-  size?: 'sm' | 'md' | 'lg';
+  readonly size?: 'sm' | 'md' | 'lg';
 }
 
 const sizeClasses = {
@@ -192,18 +192,23 @@ export function Pagination({
 
       {/* Page numbers */}
       <div className="flex items-center gap-1">
-        {pageNumbers.map((page, index) =>
-          page === 'ellipsis' ? (
-            <span
-              key={`ellipsis-${index}`}
-              className={`${sizes.button} inline-flex items-center justify-center px-2 text-gray-400 dark:text-gray-500`}
-              aria-hidden="true"
-            >
-              ⋯
-            </span>
-          ) : (
+        {pageNumbers.map((page, index) => {
+          // For ellipsis: use position-based key (start/end) to avoid array index
+          if (page === 'ellipsis') {
+            const isStartEllipsis = index < pageNumbers.length / 2;
+            return (
+              <span
+                key={isStartEllipsis ? 'ellipsis-start' : 'ellipsis-end'}
+                className={`${sizes.button} inline-flex items-center justify-center px-2 text-gray-400 dark:text-gray-500`}
+                aria-hidden="true"
+              >
+                ⋯
+              </span>
+            );
+          }
+          return (
             <button
-              key={page}
+              key={`page-${page}`}
               type="button"
               onClick={() => onPageChange(page)}
               disabled={disabled}
@@ -213,8 +218,8 @@ export function Pagination({
             >
               {page}
             </button>
-          )
-        )}
+          );
+        })}
       </div>
 
       {/* Next page button */}

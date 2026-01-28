@@ -11,7 +11,6 @@ import {
   requireAuth,
   requirePermission,
   getOrganizationId,
-  listResponse,
   errorResponse,
   getPaginationParams,
   PERMISSIONS,
@@ -30,14 +29,14 @@ export async function GET(request: Request) {
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_AUDIT
     );
@@ -194,11 +193,11 @@ export async function GET(request: Request) {
       actions: actions.map((a) => a.action).sort(),
       entities: entities.map((e) => e.entity).sort(),
       users: users
-        .filter((u) => u.user)
+        .filter((u): u is typeof u & { user: NonNullable<typeof u.user> } => u.user !== null)
         .map((u) => ({
-          id: u.user!.id,
-          name: u.user!.name,
-          email: u.user!.email,
+          id: u.user.id,
+          name: u.user.name,
+          email: u.user.email,
         })),
     };
 

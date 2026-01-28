@@ -122,7 +122,7 @@ export async function getUserPermissions(
     },
   });
 
-  if (!member || member.status !== 'active') {
+  if (member?.status !== 'active') {
     return new Set();
   }
 

@@ -11,23 +11,23 @@
 import { forwardRef, SelectHTMLAttributes, useId } from 'react';
 
 export interface SelectOption {
-  value: string;
-  label: string;
-  disabled?: boolean;
+  readonly value: string;
+  readonly label: string;
+  readonly disabled?: boolean;
 }
 
 export interface SelectProps
   extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> {
   /** Select label */
-  label?: string;
+  readonly label?: string;
   /** Options to display */
-  options: SelectOption[];
+  readonly options: readonly SelectOption[];
   /** Placeholder option */
-  placeholder?: string;
+  readonly placeholder?: string;
   /** Error message */
-  error?: string;
+  readonly error?: string;
   /** Select size */
-  size?: 'sm' | 'md' | 'lg';
+  readonly size?: 'sm' | 'md' | 'lg';
 }
 
 const sizeStyles = {

@@ -190,6 +190,7 @@ export function Sidebar() {
 
         {/* Logout Button */}
         <button
+          type="button"
           onClick={handleSignOut}
           className={`
             group relative flex items-center gap-3 w-full px-3 py-2.5 mt-2 rounded-lg
@@ -226,6 +227,7 @@ export function Sidebar() {
       {/* Collapse Toggle */}
       <div className="border-t border-primary-200 dark:border-primary-700 p-3">
         <button
+          type="button"
           onClick={toggle}
           className="
             flex items-center justify-center w-full h-10 rounded-lg

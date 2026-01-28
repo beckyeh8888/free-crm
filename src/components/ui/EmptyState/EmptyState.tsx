@@ -8,13 +8,13 @@ import { ReactNode } from 'react';
 
 export interface EmptyStateProps {
   /** Title text */
-  title?: string;
+  readonly title?: string;
   /** Description text */
-  description?: string;
+  readonly description?: string;
   /** Custom icon */
-  icon?: ReactNode;
+  readonly icon?: ReactNode;
   /** Action button or link */
-  action?: ReactNode;
+  readonly action?: ReactNode;
 }
 
 export function EmptyState({

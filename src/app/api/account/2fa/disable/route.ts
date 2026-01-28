@@ -47,8 +47,8 @@ export async function POST(request: Request) {
     const { session, error: authError } = await requireAuth();
     if (authError) return authError;
 
-    const userId = session!.user.id;
-    const userEmail = session!.user.email;
+    const userId = session.user.id;
+    const userEmail = session.user.email;
 
     // 2. Parse and validate request body
     const body = await request.json();

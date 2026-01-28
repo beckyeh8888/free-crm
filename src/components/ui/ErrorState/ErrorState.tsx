@@ -10,19 +10,19 @@ export type ErrorType = 'generic' | 'network' | 'notFound' | 'unauthorized' | 's
 
 export interface ErrorStateProps {
   /** Error type for predefined styling */
-  type?: ErrorType;
+  readonly type?: ErrorType;
   /** Error title */
-  title?: string;
+  readonly title?: string;
   /** Error description */
-  description?: string;
+  readonly description?: string;
   /** Custom icon */
-  icon?: ReactNode;
+  readonly icon?: ReactNode;
   /** Retry callback */
-  onRetry?: () => void;
+  readonly onRetry?: () => void;
   /** Retry button text */
-  retryText?: string;
+  readonly retryText?: string;
   /** Additional action */
-  action?: ReactNode;
+  readonly action?: ReactNode;
 }
 
 const defaultContent: Record<ErrorType, { title: string; description: string }> = {
@@ -150,6 +150,7 @@ export function ErrorState({
       <div className="flex flex-wrap gap-3 justify-center">
         {onRetry && (
           <button
+            type="button"
             onClick={onRetry}
             className="
               inline-flex items-center gap-2 px-4 py-2

@@ -11,52 +11,52 @@ import { ErrorState } from '../ErrorState';
 
 export interface Column<T> {
   /** Column key (must match data property) */
-  key: keyof T | string;
+  readonly key: keyof T | string;
   /** Column header label */
-  header: string;
+  readonly header: string;
   /** Custom cell renderer */
-  render?: (value: T[keyof T], row: T, index: number) => ReactNode;
+  readonly render?: (value: T[keyof T], row: T, index: number) => ReactNode;
   /** Column width (CSS value) */
-  width?: string;
+  readonly width?: string;
   /** Text alignment */
-  align?: 'left' | 'center' | 'right';
+  readonly align?: 'left' | 'center' | 'right';
   /** Whether to truncate long text */
-  truncate?: boolean;
+  readonly truncate?: boolean;
   /** Sortable column */
-  sortable?: boolean;
+  readonly sortable?: boolean;
 }
 
 export interface DataTableProps<T> {
   /** Column definitions */
-  columns: Column<T>[];
+  readonly columns: readonly Column<T>[];
   /** Data rows */
-  data: T[];
+  readonly data: readonly T[];
   /** Unique key extractor */
-  keyExtractor: (row: T, index: number) => string | number;
+  readonly keyExtractor: (row: T, index: number) => string | number;
   /** Loading state */
-  loading?: boolean;
+  readonly loading?: boolean;
   /** Error state */
-  error?: string | null;
+  readonly error?: string | null;
   /** Empty state title */
-  emptyTitle?: string;
+  readonly emptyTitle?: string;
   /** Empty state description */
-  emptyDescription?: string;
+  readonly emptyDescription?: string;
   /** Empty state action */
-  emptyAction?: ReactNode;
+  readonly emptyAction?: ReactNode;
   /** Row click handler */
-  onRowClick?: (row: T, index: number) => void;
+  readonly onRowClick?: (row: T, index: number) => void;
   /** Retry callback for error state */
-  onRetry?: () => void;
+  readonly onRetry?: () => void;
   /** Striped rows */
-  striped?: boolean;
+  readonly striped?: boolean;
   /** Hover effect on rows */
-  hoverable?: boolean;
+  readonly hoverable?: boolean;
   /** Compact mode */
-  compact?: boolean;
+  readonly compact?: boolean;
   /** Caption for accessibility */
-  caption?: string;
+  readonly caption?: string;
   /** Number of skeleton rows to show when loading */
-  skeletonRows?: number;
+  readonly skeletonRows?: number;
 }
 
 function getCellValue<T>(row: T, key: keyof T | string): T[keyof T] | undefined {
@@ -135,7 +135,7 @@ export function DataTable<T>({
           </thead>
           <tbody className="divide-y divide-primary-200 dark:divide-primary-700">
             {Array.from({ length: skeletonRows }).map((_, rowIndex) => (
-              <tr key={rowIndex}>
+              <tr key={`skeleton-row-${rowIndex}`}>
                 {columns.map((column) => (
                   <td key={String(column.key)} className={cellPadding}>
                     <Skeleton height={16} width={rowIndex % 2 === 0 ? '80%' : '60%'} />

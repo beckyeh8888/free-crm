@@ -85,6 +85,7 @@ export function Header() {
       <div className="flex items-center gap-4">
         {/* Mobile menu toggle (visible on mobile) */}
         <button
+          type="button"
           onClick={toggle}
           className="
             lg:hidden flex items-center justify-center w-10 h-10 rounded-lg
@@ -109,6 +110,7 @@ export function Header() {
       <div className="flex items-center gap-2">
         {/* Search Button */}
         <button
+          type="button"
           className="
             flex items-center justify-center w-10 h-10 rounded-lg
             text-primary-500 hover:bg-primary-100 hover:text-primary-700
@@ -123,6 +125,7 @@ export function Header() {
 
         {/* Notifications Button */}
         <button
+          type="button"
           className="
             relative flex items-center justify-center w-10 h-10 rounded-lg
             text-primary-500 hover:bg-primary-100 hover:text-primary-700

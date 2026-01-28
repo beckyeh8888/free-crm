@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   // Check customer ownership
   const { exists, isOwner } = await checkCustomerOwnership(
     customerId,
-    session!.user.id
+    session.user.id
   );
 
   if (!exists) {
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   await logAudit({
     action: 'read',
     entity: 'contact',
-    userId: session!.user.id,
+    userId: session.user.id,
     details: { customerId, count: contacts.length },
     request,
   });
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   // Check customer ownership
   const { exists, isOwner } = await checkCustomerOwnership(
     customerId,
-    session!.user.id
+    session.user.id
   );
 
   if (!exists) {
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       action: 'create',
       entity: 'contact',
       entityId: contact.id,
-      userId: session!.user.id,
+      userId: session.user.id,
       details: {
         customerId,
         name: contact.name,

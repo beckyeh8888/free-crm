@@ -20,8 +20,70 @@ import {
   PERMISSIONS,
 } from '@/lib/api-utils';
 import { updateDealSchema } from '@/lib/validation';
+import type { z } from 'zod';
 
 type RouteParams = { params: Promise<{ id: string }> };
+type UpdateDealData = z.infer<typeof updateDealSchema>;
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Check if a deal stage transition represents closing
+ */
+function isDealClosing(newStage: string | undefined, currentStage: string): boolean {
+  if (!newStage) return false;
+  const closedStages = ['closed_won', 'closed_lost'];
+  const isNewStageClosed = closedStages.includes(newStage);
+  const isCurrentStageOpen = !closedStages.includes(currentStage);
+  return isNewStageClosed && isCurrentStageOpen;
+}
+
+/**
+ * Build deal update data from validated input
+ */
+function buildDealUpdateData(data: UpdateDealData, isClosing: boolean) {
+  return {
+    ...(data.title !== undefined && { title: data.title }),
+    ...(data.value !== undefined && { value: data.value }),
+    ...(data.currency !== undefined && { currency: data.currency }),
+    ...(data.stage !== undefined && { stage: data.stage }),
+    ...(data.probability !== undefined && { probability: data.probability }),
+    ...(data.closeDate !== undefined && {
+      closeDate: data.closeDate ? new Date(data.closeDate) : null,
+    }),
+    ...(data.notes !== undefined && { notes: data.notes }),
+    ...(data.assignedToId !== undefined && { assignedToId: data.assignedToId }),
+    ...(isClosing && { closedAt: new Date() }),
+  };
+}
+
+/**
+ * Verify deal access (ownership + permission)
+ */
+async function verifyDealAccessForUpdate(
+  dealId: string,
+  userId: string,
+  organizationId: string,
+  session: NonNullable<Awaited<ReturnType<typeof requireAuth>>['session']>
+): Promise<{ error: Response | null }> {
+  const { hasAccess } = await checkDealOwnership(dealId, userId, organizationId);
+  if (!hasAccess) {
+    return { error: errorResponse('FORBIDDEN', '無權修改此商機') };
+  }
+
+  const { error: permError } = await requirePermission(
+    session,
+    organizationId,
+    PERMISSIONS.DEALS_UPDATE
+  );
+  if (permError) {
+    return { error: permError };
+  }
+
+  return { error: null };
+}
 
 /**
  * GET /api/deals/[id]
@@ -56,7 +118,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   // Check ownership/access
   const { hasAccess } = await checkDealOwnership(
     id,
-    session!.user.id,
+    session.user.id,
     dealCheck.customer.organizationId
   );
 
@@ -113,7 +175,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     action: 'read',
     entity: 'deal',
     entityId: id,
-    userId: session!.user.id,
+    userId: session.user.id,
     organizationId: dealCheck.customer.organizationId,
     request,
   });
@@ -164,51 +226,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return errorResponse('NOT_FOUND', '找不到此商機');
     }
 
-    // Check ownership/access
-    const { hasAccess } = await checkDealOwnership(
+    // Check ownership/access and permission
+    const { error: accessError } = await verifyDealAccessForUpdate(
       id,
-      session!.user.id,
-      existingDeal.customer.organizationId
-    );
-
-    if (!hasAccess) {
-      return errorResponse('FORBIDDEN', '無權修改此商機');
-    }
-
-    // Check permission
-    const { error: permError } = await requirePermission(
-      session!,
+      session.user.id,
       existingDeal.customer.organizationId,
-      PERMISSIONS.DEALS_UPDATE
+      session
     );
-    if (permError) return permError;
+    if (accessError) return accessError;
 
     const data = result.data;
 
     // Check if deal is being closed
-    const isClosing =
-      data.stage &&
-      (data.stage === 'closed_won' || data.stage === 'closed_lost') &&
-      existingDeal.stage !== 'closed_won' &&
-      existingDeal.stage !== 'closed_lost';
+    const isClosing = isDealClosing(data.stage, existingDeal.stage);
 
     // Update deal
     const deal = await prisma.deal.update({
       where: { id },
-      data: {
-        ...(data.title !== undefined && { title: data.title }),
-        ...(data.value !== undefined && { value: data.value }),
-        ...(data.currency !== undefined && { currency: data.currency }),
-        ...(data.stage !== undefined && { stage: data.stage }),
-        ...(data.probability !== undefined && { probability: data.probability }),
-        ...(data.closeDate !== undefined && {
-          closeDate: data.closeDate ? new Date(data.closeDate) : null,
-        }),
-        ...(data.notes !== undefined && { notes: data.notes }),
-        ...(data.assignedToId !== undefined && { assignedToId: data.assignedToId }),
-        // Set closedAt when deal is closed
-        ...(isClosing && { closedAt: new Date() }),
-      },
+      data: buildDealUpdateData(data, isClosing),
       select: {
         id: true,
         title: true,
@@ -238,7 +273,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       action: 'update',
       entity: 'deal',
       entityId: id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId: existingDeal.customer.organizationId,
       details: {
         before: { stage: existingDeal.stage, value: existingDeal.value },
@@ -290,7 +325,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   // Check ownership/access
   const { hasAccess } = await checkDealOwnership(
     id,
-    session!.user.id,
+    session.user.id,
     deal.customer.organizationId
   );
 
@@ -300,7 +335,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
   // Check permission
   const { error: permError } = await requirePermission(
-    session!,
+    session,
     deal.customer.organizationId,
     PERMISSIONS.DEALS_DELETE
   );
@@ -316,7 +351,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     action: 'delete',
     entity: 'deal',
     entityId: id,
-    userId: session!.user.id,
+    userId: session.user.id,
     organizationId: deal.customer.organizationId,
     details: { title: deal.title, value: deal.value },
     request,

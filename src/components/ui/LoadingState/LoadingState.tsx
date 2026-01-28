@@ -10,17 +10,17 @@ export type LoadingVariant = 'spinner' | 'skeleton' | 'dots';
 
 export interface LoadingStateProps {
   /** Loading variant */
-  variant?: LoadingVariant;
+  readonly variant?: LoadingVariant;
   /** Loading message */
-  message?: string;
+  readonly message?: string;
   /** Size of the loader */
-  size?: 'sm' | 'md' | 'lg';
+  readonly size?: 'sm' | 'md' | 'lg';
   /** Full page overlay */
-  fullPage?: boolean;
+  readonly fullPage?: boolean;
   /** Number of skeleton lines (for skeleton variant) */
-  skeletonLines?: number;
+  readonly skeletonLines?: number;
   /** Custom content to show while loading */
-  children?: ReactNode;
+  readonly children?: ReactNode;
 }
 
 const sizeClasses = {
@@ -74,13 +74,14 @@ function Dots({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 }
 
 function SkeletonLines({ lines = 3, size = 'md' }: { lines?: number; size?: 'sm' | 'md' | 'lg' }) {
-  const heightClass = size === 'sm' ? 'h-3' : size === 'lg' ? 'h-5' : 'h-4';
+  const heightClasses = { sm: 'h-3', md: 'h-4', lg: 'h-5' };
+  const heightClass = heightClasses[size];
 
   return (
     <div className="w-full space-y-3" role="presentation">
       {Array.from({ length: lines }).map((_, i) => (
         <div
-          key={i}
+          key={`skeleton-line-${i}`}
           className={`
             ${heightClass}
             bg-gray-200 dark:bg-gray-700

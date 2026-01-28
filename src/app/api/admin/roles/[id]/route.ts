@@ -74,6 +74,55 @@ async function getRoleWithDetails(roleId: string, organizationId: string) {
   });
 }
 
+/**
+ * Validate role update - check for duplicate names
+ */
+async function validateRoleNameUnique(
+  name: string | undefined,
+  currentName: string,
+  roleId: string,
+  organizationId: string
+): Promise<boolean> {
+  if (!name || name === currentName) return true;
+
+  const existingRole = await prisma.role.findFirst({
+    where: {
+      name,
+      id: { not: roleId },
+      OR: [{ organizationId }, { organizationId: null }],
+    },
+  });
+
+  return !existingRole;
+}
+
+/**
+ * Get permission records by codes
+ */
+async function getPermissionRecords(
+  permissions: string[]
+): Promise<{ id: string; code: string }[]> {
+  return prisma.permission.findMany({
+    where: { code: { in: permissions } },
+    select: { id: true, code: true },
+  });
+}
+
+/**
+ * Build update data object
+ */
+function buildRoleUpdateData(data: {
+  name?: string;
+  description?: string;
+  isDefault?: boolean;
+}): Record<string, unknown> {
+  const updateData: Record<string, unknown> = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;
+  return updateData;
+}
+
 // ============================================
 // GET /api/admin/roles/[id] - Get role details
 // ============================================
@@ -91,14 +140,14 @@ export async function GET(
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_ROLES
     );
@@ -149,79 +198,59 @@ export async function PATCH(
   try {
     const { id } = await params;
 
-    // 1. Authenticate
+    // 1. Authenticate and authorize
     const { session, error: authError } = await requireAuth();
     if (authError) return authError;
 
-    // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
-    // 3. Check permission
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_ROLES_UPDATE
     );
     if (permError) return permError;
 
-    // 4. Parse and validate request body
+    // 2. Validate request body
     const body = await request.json();
     const validatedData = updateRoleSchema.safeParse(body);
-
     if (!validatedData.success) {
-      return errorResponse(
-        'VALIDATION_ERROR',
-        validatedData.error.issues[0].message
-      );
+      return errorResponse('VALIDATION_ERROR', validatedData.error.issues[0].message);
     }
 
     const { name, description, permissions, isDefault } = validatedData.data;
 
-    // 5. Get current role
+    // 3. Get and validate current role
     const currentRole = await getRoleWithDetails(id, organizationId);
-
     if (!currentRole) {
       return errorResponse('NOT_FOUND', '角色不存在');
     }
 
-    // 6. Prevent editing system roles (except isDefault)
-    if (currentRole.isSystem && (name || description || permissions)) {
+    // 4. Business rule validations
+    const isEditingSystemRole = currentRole.isSystem && (name || description || permissions);
+    if (isEditingSystemRole) {
       return errorResponse('FORBIDDEN', '無法修改系統角色的名稱、描述或權限');
     }
 
-    // 7. Check for duplicate name if changing
-    if (name && name !== currentRole.name) {
-      const existingRole = await prisma.role.findFirst({
-        where: {
-          name,
-          id: { not: id },
-          OR: [{ organizationId }, { organizationId: null }],
-        },
-      });
-
-      if (existingRole) {
-        return errorResponse('CONFLICT', '此角色名稱已存在');
-      }
+    const isNameUnique = await validateRoleNameUnique(name, currentRole.name, id, organizationId);
+    if (!isNameUnique) {
+      return errorResponse('CONFLICT', '此角色名稱已存在');
     }
 
-    // 8. Get permission IDs if updating permissions
+    // 5. Validate permissions if provided
     let permissionRecords: { id: string; code: string }[] = [];
     if (permissions) {
-      permissionRecords = await prisma.permission.findMany({
-        where: { code: { in: permissions } },
-        select: { id: true, code: true },
-      });
-
+      permissionRecords = await getPermissionRecords(permissions);
       if (permissionRecords.length !== permissions.length) {
         return errorResponse('VALIDATION_ERROR', '部分權限代碼無效');
       }
     }
 
-    // 9. Store before state for audit
+    // 6. Store before state for audit
     const beforeState = {
       name: currentRole.name,
       description: currentRole.description,
@@ -229,74 +258,22 @@ export async function PATCH(
       permissions: currentRole.permissions.map((rp) => rp.permission.code),
     };
 
-    // 10. Update role in transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // If setting as default, unset other defaults first
-      if (isDefault && !currentRole.isDefault) {
-        await tx.role.updateMany({
-          where: { organizationId, isDefault: true, id: { not: id } },
-          data: { isDefault: false },
-        });
-      }
+    // 7. Execute update in transaction
+    const result = await executeRoleUpdate(
+      id,
+      organizationId,
+      { name, description, isDefault },
+      permissions,
+      permissionRecords,
+      currentRole.isDefault
+    );
 
-      // Prepare update data
-      const updateData: Record<string, unknown> = {};
-      if (name !== undefined) updateData.name = name;
-      if (description !== undefined) updateData.description = description;
-      if (isDefault !== undefined) updateData.isDefault = isDefault;
-
-      // Update role
-      const role = await tx.role.update({
-        where: { id },
-        data: updateData,
-      });
-
-      // Update permissions if provided
-      if (permissions) {
-        // Delete existing permissions
-        await tx.rolePermission.deleteMany({
-          where: { roleId: id },
-        });
-
-        // Create new permissions
-        await tx.rolePermission.createMany({
-          data: permissionRecords.map((p) => ({
-            roleId: id,
-            permissionId: p.id,
-          })),
-        });
-      }
-
-      // Return updated role with permissions
-      return tx.role.findUnique({
-        where: { id },
-        include: {
-          permissions: {
-            include: {
-              permission: {
-                select: {
-                  code: true,
-                  name: true,
-                  category: true,
-                },
-              },
-            },
-          },
-          _count: {
-            select: {
-              members: { where: { organizationId } },
-            },
-          },
-        },
-      });
-    });
-
-    // 11. Log audit
+    // 8. Log audit
     await logAdminAction({
       action: permissions ? 'permission_change' : 'update',
       entity: 'role',
       entityId: id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId,
       before: beforeState,
       after: {
@@ -308,8 +285,8 @@ export async function PATCH(
       request,
     });
 
-    // 12. Transform response
-    const response = {
+    // 9. Return response
+    return successResponse({
       id: result?.id,
       name: result?.name,
       description: result?.description,
@@ -323,13 +300,63 @@ export async function PATCH(
         category: rp.permission.category,
       })),
       updatedAt: result?.updatedAt,
-    };
-
-    return successResponse(response);
+    });
   } catch (error) {
     console.error('Update role error:', error);
     return errorResponse('INTERNAL_ERROR', '更新角色失敗');
   }
+}
+
+/**
+ * Execute role update in a transaction
+ */
+async function executeRoleUpdate(
+  roleId: string,
+  organizationId: string,
+  updateFields: { name?: string; description?: string; isDefault?: boolean },
+  permissions: string[] | undefined,
+  permissionRecords: { id: string; code: string }[],
+  wasDefault: boolean
+) {
+  return prisma.$transaction(async (tx) => {
+    // Unset other defaults if setting this as default
+    if (updateFields.isDefault && !wasDefault) {
+      await tx.role.updateMany({
+        where: { organizationId, isDefault: true, id: { not: roleId } },
+        data: { isDefault: false },
+      });
+    }
+
+    // Update role
+    await tx.role.update({
+      where: { id: roleId },
+      data: buildRoleUpdateData(updateFields),
+    });
+
+    // Update permissions if provided
+    if (permissions) {
+      await tx.rolePermission.deleteMany({ where: { roleId } });
+      await tx.rolePermission.createMany({
+        data: permissionRecords.map((p) => ({
+          roleId,
+          permissionId: p.id,
+        })),
+      });
+    }
+
+    // Return updated role
+    return tx.role.findUnique({
+      where: { id: roleId },
+      include: {
+        permissions: {
+          include: {
+            permission: { select: { code: true, name: true, category: true } },
+          },
+        },
+        _count: { select: { members: { where: { organizationId } } } },
+      },
+    });
+  });
 }
 
 // ============================================
@@ -349,14 +376,14 @@ export async function DELETE(
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_ROLES_DELETE
     );
@@ -392,7 +419,7 @@ export async function DELETE(
       action: 'delete',
       entity: 'role',
       entityId: id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId,
       before: {
         name: currentRole.name,

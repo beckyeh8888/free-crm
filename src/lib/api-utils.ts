@@ -12,16 +12,12 @@ import { getServerSession, Session } from 'next-auth';
 import { authOptions } from './auth';
 import { prisma } from './prisma';
 import {
-  hasPermission,
-  hasAnyPermission,
-  hasAllPermissions,
-  isOrganizationMember,
   getUserPermissionContext,
   canAccessCustomer,
   canAccessDeal,
   type UserPermissionContext,
 } from './rbac';
-import { type PermissionCode, PERMISSIONS } from './permissions';
+import { type PermissionCode } from './permissions';
 
 // ============================================
 // Response Types
@@ -64,23 +60,23 @@ export type ErrorCode =
 // ============================================
 
 export function successResponse<T>(data: T, status = 200) {
-  return NextResponse.json({ success: true, data } as ApiSuccessResponse<T>, {
-    status,
-  });
+  const body: ApiSuccessResponse<T> = { success: true, data };
+  return NextResponse.json(body, { status });
 }
 
 export function listResponse<T>(
   data: T[],
   pagination: { page: number; limit: number; total: number }
 ) {
-  return NextResponse.json({
+  const body: ApiListResponse<T> = {
     success: true,
     data,
     pagination: {
       ...pagination,
       totalPages: Math.ceil(pagination.total / pagination.limit),
     },
-  } as ApiListResponse<T>);
+  };
+  return NextResponse.json(body);
 }
 
 export function errorResponse(
@@ -97,10 +93,8 @@ export function errorResponse(
     INTERNAL_ERROR: 500,
   };
 
-  return NextResponse.json(
-    { success: false, error: { code, message } } as ApiErrorResponse,
-    { status: status ?? statusMap[code] }
-  );
+  const body: ApiErrorResponse = { success: false, error: { code, message } };
+  return NextResponse.json(body, { status: status ?? statusMap[code] });
 }
 
 // ============================================

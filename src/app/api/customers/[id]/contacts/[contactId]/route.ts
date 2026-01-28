@@ -33,7 +33,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   // Check customer ownership
   const { exists, isOwner } = await checkCustomerOwnership(
     customerId,
-    session!.user.id
+    session.user.id
   );
 
   if (!exists) {
@@ -58,7 +58,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     },
   });
 
-  if (!existingContact || existingContact.customerId !== customerId) {
+  if (existingContact?.customerId !== customerId) {
     return errorResponse('NOT_FOUND', '找不到此聯絡人');
   }
 
@@ -109,7 +109,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       action: 'update',
       entity: 'contact',
       entityId: contactId,
-      userId: session!.user.id,
+      userId: session.user.id,
       details: {
         customerId,
         before: {
@@ -144,7 +144,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   // Check customer ownership
   const { exists, isOwner } = await checkCustomerOwnership(
     customerId,
-    session!.user.id
+    session.user.id
   );
 
   if (!exists) {
@@ -166,7 +166,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     },
   });
 
-  if (!contact || contact.customerId !== customerId) {
+  if (contact?.customerId !== customerId) {
     return errorResponse('NOT_FOUND', '找不到此聯絡人');
   }
 
@@ -181,7 +181,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       action: 'delete',
       entity: 'contact',
       entityId: contactId,
-      userId: session!.user.id,
+      userId: session.user.id,
       details: {
         customerId,
         name: contact.name,

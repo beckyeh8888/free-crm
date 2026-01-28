@@ -23,6 +23,24 @@ import {
 import { prisma } from '@/lib/prisma';
 
 // ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Build orderBy clause for user list query
+ * Extracts nested ternary to improve readability (S3358)
+ */
+function buildUserOrderBy(sortBy: string, sortOrder: 'asc' | 'desc') {
+  if (sortBy === 'name') {
+    return { user: { name: sortOrder } };
+  }
+  if (sortBy === 'email') {
+    return { user: { email: sortOrder } };
+  }
+  return { [sortBy]: sortOrder };
+}
+
+// ============================================
 // Validation Schemas
 // ============================================
 
@@ -59,14 +77,14 @@ export async function GET(request: Request) {
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission
-    const { context, error: permError } = await requirePermission(
-      session!,
+    const { error: permError } = await requirePermission(
+      session,
       organizationId,
       PERMISSIONS.ADMIN_USERS
     );
@@ -109,12 +127,7 @@ export async function GET(request: Request) {
         where,
         skip,
         take: limit,
-        orderBy:
-          sortBy === 'name'
-            ? { user: { name: sortOrder } }
-            : sortBy === 'email'
-              ? { user: { email: sortOrder } }
-              : { [sortBy]: sortOrder },
+        orderBy: buildUserOrderBy(sortBy, sortOrder),
         include: {
           user: {
             select: {
@@ -181,14 +194,14 @@ export async function POST(request: Request) {
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission
-    const { context, error: permError } = await requirePermission(
-      session!,
+    const { error: permError } = await requirePermission(
+      session,
       organizationId,
       PERMISSIONS.ADMIN_USERS_CREATE
     );
@@ -247,13 +260,13 @@ export async function POST(request: Request) {
     // 8. Create user or organization member
     const result = await prisma.$transaction(async (tx) => {
       // If user doesn't exist, create them
-      if (!user) {
+      const currentUser = user ?? await (async () => {
         const password =
           !isInvite && 'password' in validatedData.data
-            ? await bcrypt.hash(validatedData.data.password!, 10)
+            ? await bcrypt.hash(validatedData.data.password as string, 10)
             : null;
 
-        user = await tx.user.create({
+        return tx.user.create({
           data: {
             email,
             name,
@@ -261,17 +274,17 @@ export async function POST(request: Request) {
             status: isInvite ? 'pending' : 'active',
           },
         });
-      }
+      })();
 
       // Create organization membership
       const member = await tx.organizationMember.create({
         data: {
-          userId: user!.id,
+          userId: currentUser.id,
           organizationId,
           roleId,
           status: isInvite ? 'invited' : 'active',
           invitedAt: isInvite ? new Date() : null,
-          invitedBy: isInvite ? session!.user.id : null,
+          invitedBy: isInvite ? session.user.id : null,
         },
         include: {
           user: {
@@ -299,7 +312,7 @@ export async function POST(request: Request) {
       action: 'member_invite',
       entity: 'organization_member',
       entityId: result.id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId,
       targetUserId: result.userId,
       after: {

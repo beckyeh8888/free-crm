@@ -34,6 +34,135 @@ const updateUserSchema = z.object({
 // Helper Functions
 // ============================================
 
+/**
+ * Validate self-modification restrictions
+ * Prevents users from suspending themselves or demoting their own role
+ */
+async function validateSelfModification(
+  currentMember: Awaited<ReturnType<typeof getMemberWithDetails>>,
+  sessionUserId: string,
+  roleId?: string,
+  status?: string
+): Promise<{ error: Response | null }> {
+  if (!currentMember || currentMember.userId !== sessionUserId) {
+    return { error: null };
+  }
+
+  // Cannot suspend self
+  if (status === 'suspended') {
+    return { error: errorResponse('FORBIDDEN', '無法停用自己的帳號') };
+  }
+
+  // Check if demoting own role
+  if (!roleId || roleId === currentMember.roleId) {
+    return { error: null };
+  }
+
+  const [newRole, currentRole] = await Promise.all([
+    prisma.role.findUnique({
+      where: { id: roleId },
+      include: { permissions: true },
+    }),
+    prisma.role.findUnique({
+      where: { id: currentMember.roleId },
+      include: { permissions: true },
+    }),
+  ]);
+
+  if (
+    newRole &&
+    currentRole &&
+    newRole.permissions.length < currentRole.permissions.length
+  ) {
+    return { error: errorResponse('FORBIDDEN', '無法降低自己的權限等級') };
+  }
+
+  return { error: null };
+}
+
+/**
+ * Verify that a role exists and is accessible
+ */
+async function verifyRoleAccess(
+  roleId: string,
+  organizationId: string
+): Promise<{ exists: boolean }> {
+  const role = await prisma.role.findFirst({
+    where: {
+      id: roleId,
+      OR: [{ organizationId }, { organizationId: null, isSystem: true }],
+    },
+  });
+  return { exists: !!role };
+}
+
+/**
+ * Build update data objects for user and member
+ */
+function buildUserUpdateData(
+  name?: string,
+  roleId?: string,
+  status?: string
+): {
+  memberUpdate: Record<string, unknown>;
+  userUpdate: Record<string, unknown>;
+} {
+  const memberUpdate: Record<string, unknown> = {};
+  const userUpdate: Record<string, unknown> = {};
+
+  if (roleId) memberUpdate.roleId = roleId;
+  if (status) memberUpdate.status = status;
+  if (name) userUpdate.name = name;
+
+  return { memberUpdate, userUpdate };
+}
+
+/**
+ * Execute user and member updates in a transaction
+ */
+async function executeUserMemberUpdate(
+  currentMember: NonNullable<Awaited<ReturnType<typeof getMemberWithDetails>>>,
+  memberUpdate: Record<string, unknown>,
+  userUpdate: Record<string, unknown>,
+  organizationId: string
+) {
+  return prisma.$transaction(async (tx) => {
+    if (Object.keys(userUpdate).length > 0) {
+      await tx.user.update({
+        where: { id: currentMember.userId },
+        data: userUpdate,
+      });
+    }
+
+    if (Object.keys(memberUpdate).length > 0) {
+      await tx.organizationMember.update({
+        where: { id: currentMember.id },
+        data: memberUpdate,
+      });
+    }
+
+    return getMemberWithDetails(currentMember.id, organizationId);
+  });
+}
+
+/**
+ * Determine the audit action type based on changes
+ */
+function determineUserAuditAction(
+  roleId: string | undefined,
+  currentRoleId: string,
+  status: string | undefined,
+  currentStatus: string
+): 'update' | 'role_change' | 'member_suspend' {
+  if (roleId && roleId !== currentRoleId) {
+    return 'role_change';
+  }
+  if (status === 'suspended' && currentStatus !== 'suspended') {
+    return 'member_suspend';
+  }
+  return 'update';
+}
+
 async function getMemberWithDetails(
   memberId: string,
   organizationId: string
@@ -180,14 +309,14 @@ export async function GET(
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_USERS
     );
@@ -257,14 +386,14 @@ export async function PATCH(
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_USERS_UPDATE
     );
@@ -290,103 +419,53 @@ export async function PATCH(
       return errorResponse('NOT_FOUND', '用戶不存在');
     }
 
-    // 6. Prevent self-demotion/suspension
-    if (currentMember.userId === session!.user.id) {
-      if (status === 'suspended') {
-        return errorResponse('FORBIDDEN', '無法停用自己的帳號');
-      }
-      // Check if demoting own role
-      if (roleId && roleId !== currentMember.roleId) {
-        const newRole = await prisma.role.findUnique({
-          where: { id: roleId },
-          include: { permissions: true },
-        });
-        const currentRole = await prisma.role.findUnique({
-          where: { id: currentMember.roleId },
-          include: { permissions: true },
-        });
-
-        if (
-          newRole &&
-          currentRole &&
-          newRole.permissions.length < currentRole.permissions.length
-        ) {
-          return errorResponse('FORBIDDEN', '無法降低自己的權限等級');
-        }
-      }
-    }
+    // 6. Validate self-modification restrictions
+    const { error: selfModError } = await validateSelfModification(
+      currentMember,
+      session.user.id,
+      roleId,
+      status
+    );
+    if (selfModError) return selfModError;
 
     // 7. Verify new role if changing
     if (roleId) {
-      const role = await prisma.role.findFirst({
-        where: {
-          id: roleId,
-          OR: [{ organizationId }, { organizationId: null, isSystem: true }],
-        },
-      });
-
-      if (!role) {
+      const { exists } = await verifyRoleAccess(roleId, organizationId);
+      if (!exists) {
         return errorResponse('NOT_FOUND', '角色不存在');
       }
     }
 
     // 8. Prepare update data
-    const memberUpdate: Record<string, unknown> = {};
-    const userUpdate: Record<string, unknown> = {};
+    const { memberUpdate, userUpdate } = buildUserUpdateData(name, roleId, status);
     const beforeState: Record<string, unknown> = {
       name: currentMember.user.name,
       role: currentMember.role.name,
       memberStatus: currentMember.status,
     };
 
-    if (roleId) {
-      memberUpdate.roleId = roleId;
-    }
-
-    if (status) {
-      memberUpdate.status = status;
-    }
-
-    if (name) {
-      userUpdate.name = name;
-    }
-
     // 9. Update in transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Update user if needed
-      if (Object.keys(userUpdate).length > 0) {
-        await tx.user.update({
-          where: { id: currentMember.userId },
-          data: userUpdate,
-        });
-      }
-
-      // Update member if needed
-      if (Object.keys(memberUpdate).length > 0) {
-        await tx.organizationMember.update({
-          where: { id: currentMember.id },
-          data: memberUpdate,
-        });
-      }
-
-      // Return updated member
-      return getMemberWithDetails(currentMember.id, organizationId);
-    });
+    const result = await executeUserMemberUpdate(
+      currentMember,
+      memberUpdate,
+      userUpdate,
+      organizationId
+    );
 
     // 10. Determine audit action
-    let auditAction: 'update' | 'role_change' | 'member_suspend' = 'update';
-    if (roleId && roleId !== currentMember.roleId) {
-      auditAction = 'role_change';
-    } else if (status === 'suspended' && currentMember.status !== 'suspended') {
-      auditAction = 'member_suspend';
-    }
+    const auditAction = determineUserAuditAction(
+      roleId,
+      currentMember.roleId,
+      status,
+      currentMember.status
+    );
 
     // 11. Log audit
     await logAdminAction({
       action: auditAction,
       entity: 'organization_member',
       entityId: currentMember.id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId,
       targetUserId: currentMember.userId,
       before: beforeState,
@@ -435,14 +514,14 @@ export async function DELETE(
 
     // 2. Get organization ID
     const organizationId =
-      getOrganizationId(request) || session!.user.defaultOrganizationId;
+      getOrganizationId(request) || session.user.defaultOrganizationId;
     if (!organizationId) {
       return errorResponse('FORBIDDEN', '無法確定組織');
     }
 
     // 3. Check permission
     const { error: permError } = await requirePermission(
-      session!,
+      session,
       organizationId,
       PERMISSIONS.ADMIN_USERS_DELETE
     );
@@ -456,7 +535,7 @@ export async function DELETE(
     }
 
     // 5. Prevent self-removal
-    if (currentMember.userId === session!.user.id) {
+    if (currentMember.userId === session.user.id) {
       return errorResponse('FORBIDDEN', '無法從組織中移除自己');
     }
 
@@ -470,7 +549,7 @@ export async function DELETE(
       action: 'member_remove',
       entity: 'organization_member',
       entityId: currentMember.id,
-      userId: session!.user.id,
+      userId: session.user.id,
       organizationId,
       targetUserId: currentMember.userId,
       before: {

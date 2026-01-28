@@ -13,13 +13,13 @@ import { forwardRef, InputHTMLAttributes, useId } from 'react';
 export interface TextInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   /** Input label */
-  label?: string;
+  readonly label?: string;
   /** Error message */
-  error?: string;
+  readonly error?: string;
   /** Helper text */
-  hint?: string;
+  readonly hint?: string;
   /** Input size */
-  size?: 'sm' | 'md' | 'lg';
+  readonly size?: 'sm' | 'md' | 'lg';
 }
 
 const sizeStyles = {

@@ -9,7 +9,7 @@ import { SessionProvider as NextAuthSessionProvider } from 'next-auth/react';
 import { ReactNode } from 'react';
 
 interface Props {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 export default function SessionProvider({ children }: Props) {

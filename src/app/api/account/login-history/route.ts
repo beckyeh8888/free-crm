@@ -7,7 +7,6 @@
 
 import {
   requireAuth,
-  listResponse,
   errorResponse,
   getPaginationParams,
 } from '@/lib/api-utils';
@@ -23,7 +22,7 @@ export async function GET(request: Request) {
     const { session, error: authError } = await requireAuth();
     if (authError) return authError;
 
-    const userId = session!.user.id;
+    const userId = session.user.id;
 
     // 2. Parse query parameters
     const url = new URL(request.url);
