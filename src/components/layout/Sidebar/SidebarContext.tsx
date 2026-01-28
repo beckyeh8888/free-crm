@@ -24,7 +24,7 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'sidebar-collapsed';
 
-export function SidebarProvider({ children }: { children: ReactNode }) {
+export function SidebarProvider({ children }: { readonly children: ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Load initial state from localStorage

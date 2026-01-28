@@ -38,7 +38,7 @@ const sizeClasses = {
   },
 };
 
-function ChevronLeftIcon({ className }: { className?: string }) {
+function ChevronLeftIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -46,7 +46,7 @@ function ChevronLeftIcon({ className }: { className?: string }) {
   );
 }
 
-function ChevronRightIcon({ className }: { className?: string }) {
+function ChevronRightIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -54,7 +54,7 @@ function ChevronRightIcon({ className }: { className?: string }) {
   );
 }
 
-function ChevronDoubleLeftIcon({ className }: { className?: string }) {
+function ChevronDoubleLeftIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -62,7 +62,7 @@ function ChevronDoubleLeftIcon({ className }: { className?: string }) {
   );
 }
 
-function ChevronDoubleRightIcon({ className }: { className?: string }) {
+function ChevronDoubleRightIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />

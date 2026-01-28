@@ -29,7 +29,7 @@ export default function LoginPage() {
     error === 'CredentialsSignin' ? '電子郵件或密碼錯誤' : null
   );
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setFormError(null);

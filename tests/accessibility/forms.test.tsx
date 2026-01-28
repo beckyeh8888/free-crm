@@ -96,7 +96,7 @@ describe('Form Accessibility - Error Messages', () => {
   });
 
   it('should use role="alert" for dynamic error messages', () => {
-    const DynamicError = ({ error }: { error: string | null }) => (
+    const DynamicError = ({ error }: { readonly error: string | null }) => (
       <div>{error && <div role="alert">{error}</div>}</div>
     );
 

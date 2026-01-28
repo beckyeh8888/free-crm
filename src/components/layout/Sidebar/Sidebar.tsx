@@ -10,7 +10,7 @@ import { useSidebar } from './SidebarContext';
 import { SidebarItem } from './SidebarItem';
 
 // Icons (inline SVG for simplicity)
-function HomeIcon({ className }: { className?: string }) {
+function HomeIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
@@ -23,7 +23,7 @@ function HomeIcon({ className }: { className?: string }) {
   );
 }
 
-function UsersIcon({ className }: { className?: string }) {
+function UsersIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
@@ -36,7 +36,7 @@ function UsersIcon({ className }: { className?: string }) {
   );
 }
 
-function BriefcaseIcon({ className }: { className?: string }) {
+function BriefcaseIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
@@ -49,7 +49,7 @@ function BriefcaseIcon({ className }: { className?: string }) {
   );
 }
 
-function FileTextIcon({ className }: { className?: string }) {
+function FileTextIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
@@ -62,7 +62,7 @@ function FileTextIcon({ className }: { className?: string }) {
   );
 }
 
-function SettingsIcon({ className }: { className?: string }) {
+function SettingsIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
@@ -81,7 +81,7 @@ function SettingsIcon({ className }: { className?: string }) {
   );
 }
 
-function ChevronLeftIcon({ className }: { className?: string }) {
+function ChevronLeftIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -89,7 +89,7 @@ function ChevronLeftIcon({ className }: { className?: string }) {
   );
 }
 
-function ChevronRightIcon({ className }: { className?: string }) {
+function ChevronRightIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -97,7 +97,7 @@ function ChevronRightIcon({ className }: { className?: string }) {
   );
 }
 
-function LogoutIcon({ className }: { className?: string }) {
+function LogoutIcon({ className }: { readonly className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path

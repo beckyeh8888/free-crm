@@ -48,7 +48,7 @@ const defaultContent: Record<ErrorType, { title: string; description: string }> 
   },
 };
 
-function DefaultIcon({ type }: { type: ErrorType }) {
+function DefaultIcon({ type }: { readonly type: ErrorType }) {
   const iconClasses = 'w-16 h-16 text-red-400 dark:text-red-500';
 
   switch (type) {

@@ -41,7 +41,7 @@ const sizeClasses = {
   },
 };
 
-function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+function Spinner({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
   return (
     <div
       className={`
@@ -55,7 +55,7 @@ function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-function Dots({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+function Dots({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
   return (
     <div className="flex gap-1.5">
       {[0, 1, 2].map((i) => (
@@ -73,7 +73,7 @@ function Dots({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-function SkeletonLines({ lines = 3, size = 'md' }: { lines?: number; size?: 'sm' | 'md' | 'lg' }) {
+function SkeletonLines({ lines = 3, size = 'md' }: { readonly lines?: number; readonly size?: 'sm' | 'md' | 'lg' }) {
   const heightClasses = { sm: 'h-3', md: 'h-4', lg: 'h-5' };
   const heightClass = heightClasses[size];
 
@@ -154,9 +154,9 @@ export function Skeleton({
   width,
   height,
 }: {
-  className?: string;
-  width?: string | number;
-  height?: string | number;
+  readonly className?: string;
+  readonly width?: string | number;
+  readonly height?: string | number;
 }) {
   return (
     <div

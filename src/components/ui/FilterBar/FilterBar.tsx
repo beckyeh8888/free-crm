@@ -93,8 +93,8 @@ export function FilterBar({
     onClear?.();
   }, [fields, onChange, onClear]);
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = useCallback(
+    (e) => {
       e.preventDefault();
       onSubmit?.();
     },
