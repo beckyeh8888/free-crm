@@ -28,8 +28,8 @@ export default defineConfig({
     // Coverage settings
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html', 'json'],
-      reportsDirectory: './test-results/coverage',
+      reporter: ['text', 'html', 'json', 'lcov'],
+      reportsDirectory: './coverage',
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.stories.{ts,tsx}', 'src/**/*.d.ts'],
       thresholds: {
