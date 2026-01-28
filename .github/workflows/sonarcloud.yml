@@ -1,0 +1,79 @@
+# SonarCloud 程式碼品質分析
+# ISO 27001 A.12.6.1 技術弱點管理合規
+#
+# 設定步驟：
+# 1. 前往 https://sonarcloud.io/ 用 GitHub 登入
+# 2. 點擊 "+" → "Analyze new project" → 選擇此 repo
+# 3. 取得 Organization Key（通常是你的 GitHub username）
+# 4. 更新 sonar-project.properties 的 sonar.organization
+# 5. 在 GitHub → Settings → Secrets → Actions 新增 SONAR_TOKEN
+#
+# 品質門檻 (Quality Gate) 預設規則：
+#   - 新程式碼覆蓋率 ≥ 80%
+#   - 重複程式碼 ≤ 3%
+#   - 可維護性評級 A
+#   - 可靠性評級 A
+#   - 安全性評級 A
+
+name: SonarCloud Analysis
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 完整歷史以進行 blame 分析
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+        env:
+          CI: true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Quality Summary
+        run: |
+          echo "## 🔍 SonarCloud 分析完成" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 檢查項目" >> $GITHUB_STEP_SUMMARY
+          echo "| 項目 | 說明 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐛 Bugs | 可靠性問題 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔓 Vulnerabilities | 安全性漏洞 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔥 Security Hotspots | 需審查的安全敏感程式碼 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧹 Code Smells | 可維護性問題 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Coverage | 測試覆蓋率 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📋 Duplications | 重複程式碼 |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[查看詳細報告 →](https://sonarcloud.io/project/overview?id=free-crm)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*此分析符合 ISO 27001 A.12.6.1 技術弱點管理要求*" >> $GITHUB_STEP_SUMMARY
