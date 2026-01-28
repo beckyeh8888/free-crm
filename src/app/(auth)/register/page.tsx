@@ -19,10 +19,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
-    e.preventDefault();
-    setError(null);
-
+  const performRegister = async () => {
     // Client-side validation
     if (password !== confirmPassword) {
       setError('密碼不一致');
@@ -54,6 +51,12 @@ export default function RegisterPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    void performRegister();
   };
 
   if (success) {
