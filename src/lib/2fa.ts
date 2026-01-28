@@ -195,26 +195,53 @@ export async function setupTwoFactor(
 
 /**
  * Encrypt secret for database storage
+ * Uses AES-256-GCM for authenticated encryption (ISO 27001 A.10.1.1)
  */
 export function encryptSecret(secret: string, encryptionKey: string): string {
-  const iv = crypto.randomBytes(16);
+  const iv = crypto.randomBytes(12); // GCM recommends 12 bytes IV
   const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
 
   let encrypted = cipher.update(secret, 'utf8', 'hex');
   encrypted += cipher.final('hex');
 
-  return `${iv.toString('hex')}:${encrypted}`;
+  // Get the authentication tag (16 bytes)
+  const authTag = cipher.getAuthTag().toString('hex');
+
+  // Format: iv:authTag:encrypted
+  return `${iv.toString('hex')}:${authTag}:${encrypted}`;
 }
 
 /**
  * Decrypt secret from database storage
+ * Uses AES-256-GCM for authenticated encryption (ISO 27001 A.10.1.1)
  */
 export function decryptSecret(encryptedData: string, encryptionKey: string): string {
-  const [ivHex, encrypted] = encryptedData.split(':');
+  const parts = encryptedData.split(':');
+
+  // Support both old (CBC) and new (GCM) formats for migration
+  if (parts.length === 2) {
+    // Legacy CBC format: iv:encrypted (will be deprecated)
+    const [ivHex, encrypted] = parts;
+    const iv = Buffer.from(ivHex, 'hex');
+    const key = crypto.scryptSync(encryptionKey, 'salt', 32);
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return decrypted;
+  }
+
+  // New GCM format: iv:authTag:encrypted
+  const [ivHex, authTagHex, encrypted] = parts;
   const iv = Buffer.from(ivHex, 'hex');
+  const authTag = Buffer.from(authTagHex, 'hex');
   const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+
+  // Set the authentication tag for verification
+  decipher.setAuthTag(authTag);
 
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
