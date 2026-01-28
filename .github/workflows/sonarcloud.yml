@@ -75,7 +75,7 @@ jobs:
           echo "| 📊 Coverage | 測試覆蓋率 |" >> $GITHUB_STEP_SUMMARY
           echo "| 📋 Duplications | 重複程式碼 |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[查看詳細報告 →](https://sonarcloud.io/project/overview?id=free-crm)" >> $GITHUB_STEP_SUMMARY
+          echo "[查看詳細報告 →](https://sonarcloud.io/project/overview?id=beckyeh8888_free-crm)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "*此分析符合 ISO 27001 A.12.6.1 技術弱點管理要求*" >> $GITHUB_STEP_SUMMARY

@@ -10,7 +10,7 @@
  *
  * 環境變數:
  *   SONAR_TOKEN - SonarCloud API Token
- *   SONAR_PROJECT_KEY - 專案 Key (預設: free-crm)
+ *   SONAR_PROJECT_KEY - 專案 Key (預設: beckyeh8888_free-crm)
  *   SONAR_ORGANIZATION - 組織 ID (預設: beckyeh8888)
  */
 
@@ -21,7 +21,7 @@ const path = require('path');
 // 設定
 const CONFIG = {
   baseUrl: 'sonarcloud.io',
-  projectKey: process.env.SONAR_PROJECT_KEY || 'free-crm',
+  projectKey: process.env.SONAR_PROJECT_KEY || 'beckyeh8888_free-crm',
   organization: process.env.SONAR_ORGANIZATION || 'beckyeh8888',
   token: process.env.SONAR_TOKEN,
   outputDir: path.join(__dirname, '../../sonar-results'),

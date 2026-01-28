@@ -62,7 +62,7 @@ jobs:
         id: fetch
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: free-crm
+          SONAR_PROJECT_KEY: beckyeh8888_free-crm
           SONAR_ORGANIZATION: beckyeh8888
         run: node scripts/sonar/fetch-issues.js
 
