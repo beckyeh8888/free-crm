@@ -27,7 +27,12 @@
     "sonar:fetch": "node scripts/sonar/fetch-issues.js",
     "sonar:sync": "node scripts/sonar/sync-to-notion.js",
     "sonar:generate": "node scripts/sonar/generate-fixes.js",
-    "sonar:all": "npm run sonar:fetch && npm run sonar:generate && npm run sonar:sync"
+    "sonar:all": "npm run sonar:fetch && npm run sonar:generate && npm run sonar:sync",
+    "notion:sync": "node scripts/sync-to-notion.js",
+    "notion:dev": "node scripts/sync-to-notion.js dev",
+    "notion:test": "node scripts/sync-to-notion.js test",
+    "notion:quality": "node scripts/sync-to-notion.js quality",
+    "notion:meeting": "node scripts/sync-to-notion.js meeting"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
