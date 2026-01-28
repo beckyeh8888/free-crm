@@ -387,6 +387,184 @@ sonar-scanner \
 
 ---
 
+## TypeScript/React 編碼規範（SonarCloud Code Smells 預防）
+
+> 此規範基於 2026-01-28 SonarCloud 掃描修復經驗，用於預防常見 Code Smells。
+
+### S6759: React Props 必須標記 readonly
+
+**所有 React Props interface 的屬性必須加上 `readonly` 修飾符。**
+
+```typescript
+// ❌ 錯誤：Props 未標記 readonly
+interface ButtonProps {
+  variant: 'primary' | 'secondary';
+  size: 'sm' | 'md' | 'lg';
+  onClick: () => void;
+}
+
+// ✅ 正確：所有屬性標記 readonly
+interface ButtonProps {
+  readonly variant: 'primary' | 'secondary';
+  readonly size: 'sm' | 'md' | 'lg';
+  readonly onClick: () => void;
+}
+
+// ✅ 陣列也要用 readonly
+interface DataTableProps<T> {
+  readonly columns: readonly Column<T>[];
+  readonly data: readonly T[];
+}
+```
+
+### S4325: 避免不必要的類型斷言
+
+**TypeScript 已能推斷類型時，不要使用 `as` 斷言。**
+
+```typescript
+// ❌ 錯誤：不必要的類型斷言
+const user = await prisma.user.findUnique({ where: { id } }) as User;
+const items = [] as string[];
+
+// ✅ 正確：讓 TypeScript 自動推斷
+const user = await prisma.user.findUnique({ where: { id } });
+const items: string[] = [];
+
+// ✅ 必要時使用類型守衛
+if (user && 'email' in user) {
+  // TypeScript 知道 user 有 email 屬性
+}
+```
+
+### S1874: 使用正確的 React 事件類型
+
+**避免使用已棄用的事件類型。**
+
+```typescript
+// ❌ 錯誤：使用棄用的 FormEvent
+import { FormEvent } from 'react';
+const handleSubmit = (e: FormEvent) => { ... };
+
+// ✅ 正確：使用完整的泛型類型
+const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => { ... };
+
+// ✅ 正確：其他常用事件類型
+const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => { ... };
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => { ... };
+```
+
+### S1128: 移除未使用的 Import
+
+**所有 import 必須被使用，否則立即移除。**
+
+```typescript
+// ❌ 錯誤：有未使用的 import
+import { useState, useEffect, useCallback } from 'react';  // useCallback 未使用
+
+// ✅ 正確：只 import 使用到的
+import { useState, useEffect } from 'react';
+```
+
+### S6582: 使用 Optional Chaining
+
+**優先使用 `?.` 取代 `&&` 鏈式呼叫。**
+
+```typescript
+// ❌ 錯誤：使用 && 鏈式呼叫
+const name = user && user.profile && user.profile.name;
+
+// ✅ 正確：使用 optional chaining
+const name = user?.profile?.name;
+
+// ✅ 搭配 nullish coalescing 使用
+const name = user?.profile?.name ?? 'Unknown';
+```
+
+### S3358: 避免巢狀三元運算子
+
+**三元運算子不可巢狀，改用 if-else 或函數。**
+
+```typescript
+// ❌ 錯誤：巢狀三元運算子
+const status = isActive ? 'active' : isPending ? 'pending' : 'inactive';
+
+// ✅ 正確：使用函數或 if-else
+function getStatus(isActive: boolean, isPending: boolean): string {
+  if (isActive) return 'active';
+  if (isPending) return 'pending';
+  return 'inactive';
+}
+
+// ✅ 或使用物件映射
+const statusMap = { active: 'active', pending: 'pending', default: 'inactive' };
+```
+
+### S3776: 控制認知複雜度
+
+**函數認知複雜度不得超過 15。**
+
+```typescript
+// ❌ 錯誤：複雜度過高的函數
+function processData(data: Data) {
+  if (data.type === 'A') {
+    if (data.status === 'active') {
+      if (data.items.length > 0) {
+        // 巢狀太深
+      }
+    }
+  }
+}
+
+// ✅ 正確：提早返回 + 拆分函數
+function processData(data: Data) {
+  if (data.type !== 'A') return;
+  if (data.status !== 'active') return;
+  if (data.items.length === 0) return;
+
+  processActiveItems(data.items);
+}
+
+function processActiveItems(items: Item[]) {
+  // 獨立的處理邏輯
+}
+```
+
+### S6479: 避免使用 Array Index 作為 React Key
+
+**React key 必須使用唯一且穩定的識別符。**
+
+```typescript
+// ❌ 錯誤：使用 array index 作為 key
+{items.map((item, index) => (
+  <ListItem key={index} item={item} />
+))}
+
+// ✅ 正確：使用唯一 ID
+{items.map((item) => (
+  <ListItem key={item.id} item={item} />
+))}
+
+// ✅ 如果沒有 ID，產生穩定的 key
+{items.map((item) => (
+  <ListItem key={`${item.name}-${item.email}`} item={item} />
+))}
+```
+
+### 編碼檢查清單
+
+每次提交前，確認以下項目：
+
+- [ ] 所有 React Props interface 的屬性都有 `readonly`
+- [ ] 沒有不必要的 `as` 類型斷言
+- [ ] 使用 `React.FormEvent<HTMLFormElement>` 等完整事件類型
+- [ ] 沒有未使用的 import
+- [ ] 使用 `?.` 取代 `&&` 鏈式呼叫
+- [ ] 沒有巢狀三元運算子
+- [ ] 函數認知複雜度 ≤ 15
+- [ ] React key 使用唯一 ID，不使用 array index
+
+---
+
 ## 文件管理
 
 ### 三層架構
