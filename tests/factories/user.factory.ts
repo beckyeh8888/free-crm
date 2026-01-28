@@ -1,5 +1,6 @@
 /**
  * User Test Data Factory
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import bcrypt from 'bcryptjs';
@@ -9,7 +10,7 @@ export interface UserFactoryData {
   name?: string;
   email?: string;
   password?: string;
-  role?: 'user' | 'admin';
+  status?: 'active' | 'suspended' | 'pending';
 }
 
 let userCounter = 0;
@@ -23,7 +24,7 @@ export function buildUser(overrides: UserFactoryData = {}) {
     name: overrides.name ?? `Test User ${userCounter}`,
     email: overrides.email ?? `test-user-${userCounter}-${Date.now()}@example.com`,
     password: overrides.password ?? 'TestPass123!',
-    role: overrides.role ?? 'user',
+    status: overrides.status ?? 'active',
   };
 }
 
@@ -39,7 +40,7 @@ export async function createUser(overrides: UserFactoryData = {}) {
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      role: data.role,
+      status: data.status,
     },
   });
 

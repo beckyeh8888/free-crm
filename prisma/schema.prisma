@@ -3,7 +3,8 @@
 // Sprint 2: RBAC + Multi-tenant + 2FA
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

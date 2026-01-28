@@ -1,5 +1,6 @@
 /**
  * Deal Test Data Factory
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { prisma } from '@/lib/prisma';
@@ -14,6 +15,8 @@ export type DealStage =
 
 export interface DealFactoryData {
   customerId: string;
+  createdById?: string;
+  assignedToId?: string;
   title?: string;
   value?: number;
   currency?: string;
@@ -32,6 +35,8 @@ export function buildDeal(overrides: DealFactoryData) {
   dealCounter++;
   return {
     customerId: overrides.customerId,
+    createdById: overrides.createdById,
+    assignedToId: overrides.assignedToId,
     title: overrides.title ?? `Test Deal ${dealCounter}`,
     value: overrides.value ?? dealCounter * 10000,
     currency: overrides.currency ?? 'TWD',
@@ -56,7 +61,7 @@ export async function createDeal(overrides: DealFactoryData) {
 /**
  * Create deals at various pipeline stages
  */
-export async function createDealsAtAllStages(customerId: string) {
+export async function createDealsAtAllStages(customerId: string, createdById?: string) {
   const stages: DealStage[] = [
     'lead',
     'qualified',
@@ -70,6 +75,7 @@ export async function createDealsAtAllStages(customerId: string) {
     stages.map((stage, i) =>
       createDeal({
         customerId,
+        createdById,
         title: `Deal - ${stage}`,
         value: (i + 1) * 50000,
         stage,

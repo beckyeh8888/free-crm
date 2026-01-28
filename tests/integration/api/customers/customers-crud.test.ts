@@ -2,6 +2,8 @@
  * Customer CRUD API Integration Tests
  * GET/POST /api/customers
  * GET/PATCH/DELETE /api/customers/[id]
+ *
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -13,7 +15,7 @@ import {
 } from '@/app/api/customers/[id]/route';
 import { createMockRequest, parseResponse } from '@tests/helpers/request-helpers';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
-import { createUser } from '@tests/factories/user.factory';
+import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
 import { createCustomer } from '@tests/factories/customer.factory';
 
 // Mock next-auth
@@ -24,19 +26,19 @@ vi.mock('next-auth', () => ({
 import { getServerSession } from 'next-auth';
 
 describe('Customer API', () => {
-  let testUser: Awaited<ReturnType<typeof createUser>>;
+  let testCtx: TestContext;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     await clearDatabase();
-    testUser = await createUser({ email: 'test@example.com' });
+    testCtx = await createTestContext({ userEmail: 'test@example.com' });
   });
 
-  const mockAuth = (user: typeof testUser | null) => {
+  const mockAuth = (ctx: TestContext | null) => {
     vi.mocked(getServerSession).mockResolvedValue(
-      user
+      ctx
         ? {
-            user: { id: user.id, name: user.name, email: user.email, role: user.role },
+            user: { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email },
             expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           }
         : null
@@ -54,15 +56,27 @@ describe('Customer API', () => {
     });
 
     it('should return only user own customers', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       // Create customers for test user
-      await createCustomer({ userId: testUser.id, name: 'Customer 1' });
-      await createCustomer({ userId: testUser.id, name: 'Customer 2' });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Customer 1',
+      });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Customer 2',
+      });
 
-      // Create customer for another user
-      const otherUser = await createUser({ email: 'other@example.com' });
-      await createCustomer({ userId: otherUser.id, name: 'Other Customer' });
+      // Create customer for another user in a different org
+      const otherCtx = await createTestContext({ userEmail: 'other@example.com' });
+      await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+        name: 'Other Customer',
+      });
 
       const request = createMockRequest('/api/customers');
       const response = await GET(request);
@@ -75,11 +89,15 @@ describe('Customer API', () => {
     });
 
     it('should paginate results', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       // Create 25 customers
       for (let i = 0; i < 25; i++) {
-        await createCustomer({ userId: testUser.id, name: `Customer ${i}` });
+        await createCustomer({
+          organizationId: testCtx.organization.id,
+          createdById: testCtx.user.id,
+          name: `Customer ${i}`,
+        });
       }
 
       const request = createMockRequest('/api/customers', {
@@ -97,10 +115,20 @@ describe('Customer API', () => {
     });
 
     it('should filter by type', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createCustomer({ userId: testUser.id, type: 'B2B', name: 'B2B Customer' });
-      await createCustomer({ userId: testUser.id, type: 'B2C', name: 'B2C Customer' });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        type: 'B2B',
+        name: 'B2B Customer',
+      });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        type: 'B2C',
+        name: 'B2C Customer',
+      });
 
       const request = createMockRequest('/api/customers', {
         searchParams: { type: 'B2B' },
@@ -114,11 +142,26 @@ describe('Customer API', () => {
     });
 
     it('should filter by status', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createCustomer({ userId: testUser.id, status: 'active', name: 'Active' });
-      await createCustomer({ userId: testUser.id, status: 'inactive', name: 'Inactive' });
-      await createCustomer({ userId: testUser.id, status: 'lead', name: 'Lead' });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        status: 'active',
+        name: 'Active',
+      });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        status: 'inactive',
+        name: 'Inactive',
+      });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        status: 'lead',
+        name: 'Lead',
+      });
 
       const request = createMockRequest('/api/customers', {
         searchParams: { status: 'active' },
@@ -132,10 +175,18 @@ describe('Customer API', () => {
     });
 
     it('should search by name', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createCustomer({ userId: testUser.id, name: 'Acme Corp' });
-      await createCustomer({ userId: testUser.id, name: 'Beta Inc' });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Acme Corp',
+      });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Beta Inc',
+      });
 
       const request = createMockRequest('/api/customers', {
         searchParams: { search: 'Acme' },
@@ -163,7 +214,7 @@ describe('Customer API', () => {
     });
 
     it('should create customer with valid data', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/customers', {
         method: 'POST',
@@ -184,7 +235,7 @@ describe('Customer API', () => {
     });
 
     it('should reject invalid data', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/customers', {
         method: 'POST',
@@ -195,10 +246,14 @@ describe('Customer API', () => {
       expect(response.status).toBe(400);
     });
 
-    it('should reject duplicate email for same user', async () => {
-      mockAuth(testUser);
+    it('should reject duplicate email within organization', async () => {
+      mockAuth(testCtx);
 
-      await createCustomer({ userId: testUser.id, email: 'duplicate@example.com' });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        email: 'duplicate@example.com',
+      });
 
       const request = createMockRequest('/api/customers', {
         method: 'POST',
@@ -215,7 +270,7 @@ describe('Customer API', () => {
     });
 
     it('should create audit log on create', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/customers', {
         method: 'POST',
@@ -235,7 +290,10 @@ describe('Customer API', () => {
     it('should return 401 for unauthenticated request', async () => {
       mockAuth(null);
 
-      const customer = await createCustomer({ userId: testUser.id });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+      });
       const request = createMockRequest(`/api/customers/${customer.id}`);
       const response = await GET_BY_ID(request, { params: Promise.resolve({ id: customer.id }) });
 
@@ -243,9 +301,13 @@ describe('Customer API', () => {
     });
 
     it('should return customer details with contacts and deals', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id, name: 'Detail Customer' });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Detail Customer',
+      });
       const request = createMockRequest(`/api/customers/${customer.id}`);
       const response = await GET_BY_ID(request, { params: Promise.resolve({ id: customer.id }) });
       const data = await parseResponse<{ success: boolean; data: { id: string; name: string; contacts: unknown[]; deals: unknown[] } }>(response);
@@ -259,7 +321,7 @@ describe('Customer API', () => {
     });
 
     it('should return 404 for non-existent customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/customers/non-existent-id');
       const response = await GET_BY_ID(request, { params: Promise.resolve({ id: 'non-existent-id' }) });
@@ -268,10 +330,13 @@ describe('Customer API', () => {
     });
 
     it('should return 403 for other users customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other2@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
+      const otherCtx = await createTestContext({ userEmail: 'other2@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
 
       const request = createMockRequest(`/api/customers/${otherCustomer.id}`);
       const response = await GET_BY_ID(request, { params: Promise.resolve({ id: otherCustomer.id }) });
@@ -284,7 +349,10 @@ describe('Customer API', () => {
     it('should return 401 for unauthenticated request', async () => {
       mockAuth(null);
 
-      const customer = await createCustomer({ userId: testUser.id });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+      });
       const request = createMockRequest(`/api/customers/${customer.id}`, {
         method: 'PATCH',
         body: { name: 'Updated Name' },
@@ -295,9 +363,13 @@ describe('Customer API', () => {
     });
 
     it('should update customer successfully', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id, name: 'Original Name' });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Original Name',
+      });
       const request = createMockRequest(`/api/customers/${customer.id}`, {
         method: 'PATCH',
         body: { name: 'Updated Name', status: 'inactive' },
@@ -311,10 +383,13 @@ describe('Customer API', () => {
     });
 
     it('should return 403 for other users customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other3@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
+      const otherCtx = await createTestContext({ userEmail: 'other3@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
 
       const request = createMockRequest(`/api/customers/${otherCustomer.id}`, {
         method: 'PATCH',
@@ -326,10 +401,18 @@ describe('Customer API', () => {
     });
 
     it('should reject duplicate email on update', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createCustomer({ userId: testUser.id, email: 'existing@example.com' });
-      const customer = await createCustomer({ userId: testUser.id, email: 'original@example.com' });
+      await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        email: 'existing@example.com',
+      });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        email: 'original@example.com',
+      });
 
       const request = createMockRequest(`/api/customers/${customer.id}`, {
         method: 'PATCH',
@@ -341,9 +424,13 @@ describe('Customer API', () => {
     });
 
     it('should create audit log on update', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id, name: 'Audit Update Test' });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Audit Update Test',
+      });
       const request = createMockRequest(`/api/customers/${customer.id}`, {
         method: 'PATCH',
         body: { name: 'Updated Audit Test' },
@@ -362,7 +449,10 @@ describe('Customer API', () => {
     it('should return 401 for unauthenticated request', async () => {
       mockAuth(null);
 
-      const customer = await createCustomer({ userId: testUser.id });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+      });
       const request = createMockRequest(`/api/customers/${customer.id}`, { method: 'DELETE' });
       const response = await DELETE(request, { params: Promise.resolve({ id: customer.id }) });
 
@@ -370,9 +460,12 @@ describe('Customer API', () => {
     });
 
     it('should delete customer successfully', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+      });
       const request = createMockRequest(`/api/customers/${customer.id}`, { method: 'DELETE' });
       const response = await DELETE(request, { params: Promise.resolve({ id: customer.id }) });
       const data = await parseResponse<{ success: boolean; data: { deleted: boolean } }>(response);
@@ -386,10 +479,13 @@ describe('Customer API', () => {
     });
 
     it('should return 403 for other users customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other4@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
+      const otherCtx = await createTestContext({ userEmail: 'other4@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
 
       const request = createMockRequest(`/api/customers/${otherCustomer.id}`, { method: 'DELETE' });
       const response = await DELETE(request, { params: Promise.resolve({ id: otherCustomer.id }) });
@@ -398,9 +494,12 @@ describe('Customer API', () => {
     });
 
     it('should cascade delete contacts and deals', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+      });
 
       // Create contacts and deals for the customer
       await prisma.contact.create({
@@ -422,9 +521,13 @@ describe('Customer API', () => {
     });
 
     it('should create audit log on delete', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id, name: 'Audit Delete Test' });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Audit Delete Test',
+      });
       const customerId = customer.id;
 
       const request = createMockRequest(`/api/customers/${customerId}`, { method: 'DELETE' });

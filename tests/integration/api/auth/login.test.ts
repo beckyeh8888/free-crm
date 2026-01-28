@@ -1,10 +1,13 @@
 /**
  * Login API Integration Tests
  * Tests NextAuth CredentialsProvider authorize function
+ *
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
+import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
 import bcrypt from 'bcryptjs';
 
 // Import the authorize function by accessing the credentials provider
@@ -15,10 +18,21 @@ const credentialsProvider = authOptions.providers.find(
   (p) => p.id === 'credentials'
 );
 
-// Type for the authorize function
+// Type for the authorize function return value (updated for multi-tenant)
+type AuthorizeReturn = {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+  status: string;
+  defaultOrganizationId?: string;
+  defaultOrganizationName?: string;
+  defaultRole?: string;
+} | null;
+
 type AuthorizeFunction = (
   credentials: Record<'email' | 'password', string> | undefined
-) => Promise<{ id: string; email: string; name: string | null; role: string } | null>;
+) => Promise<AuthorizeReturn>;
 
 describe('NextAuth Credentials Login', () => {
   const testPassword = 'TestPass123!';
@@ -31,14 +45,11 @@ describe('NextAuth Credentials Login', () => {
 
   describe('Successful Login', () => {
     it('should authenticate user with valid credentials', async () => {
-      // Create test user
-      const user = await prisma.user.create({
-        data: {
-          name: 'Test User',
-          email: 'login@example.com',
-          password: hashedPassword,
-          role: 'user',
-        },
+      // Create test context with user, org, and role
+      const ctx = await createTestContext({
+        userEmail: 'login@example.com',
+        userName: 'Test User',
+        userPassword: testPassword,
       });
 
       // Get authorize function
@@ -50,20 +61,17 @@ describe('NextAuth Credentials Login', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result?.id).toBe(user.id);
+      expect(result?.id).toBe(ctx.user.id);
       expect(result?.email).toBe('login@example.com');
       expect(result?.name).toBe('Test User');
-      expect(result?.role).toBe('user');
     });
 
-    it('should return user with admin role', async () => {
-      await prisma.user.create({
-        data: {
-          name: 'Admin User',
-          email: 'admin@example.com',
-          password: hashedPassword,
-          role: 'admin',
-        },
+    it('should return user with default organization context', async () => {
+      const ctx = await createTestContext({
+        userEmail: 'admin@example.com',
+        userName: 'Admin User',
+        userPassword: testPassword,
+        roleName: 'Admin',
       });
 
       const authorize = (credentialsProvider as { options: { authorize: AuthorizeFunction } }).options.authorize;
@@ -73,17 +81,14 @@ describe('NextAuth Credentials Login', () => {
         password: testPassword,
       });
 
-      expect(result?.role).toBe('admin');
+      expect(result?.defaultOrganizationId).toBe(ctx.organization.id);
+      expect(result?.defaultRole).toBe('Admin');
     });
 
     it('should not return password in user object', async () => {
-      await prisma.user.create({
-        data: {
-          name: 'Test User',
-          email: 'nopass@example.com',
-          password: hashedPassword,
-          role: 'user',
-        },
+      await createTestContext({
+        userEmail: 'nopass@example.com',
+        userPassword: testPassword,
       });
 
       const authorize = (credentialsProvider as { options: { authorize: AuthorizeFunction } }).options.authorize;
@@ -95,17 +100,42 @@ describe('NextAuth Credentials Login', () => {
 
       expect(result).not.toHaveProperty('password');
     });
+
+    it('should update lastLoginAt on successful login', async () => {
+      const ctx = await createTestContext({
+        userEmail: 'lastlogin@example.com',
+        userPassword: testPassword,
+      });
+
+      const authorize = (credentialsProvider as { options: { authorize: AuthorizeFunction } }).options.authorize;
+
+      // Get user before login
+      const userBefore = await prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        select: { lastLoginAt: true },
+      });
+
+      await authorize({
+        email: 'lastlogin@example.com',
+        password: testPassword,
+      });
+
+      // Get user after login
+      const userAfter = await prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        select: { lastLoginAt: true },
+      });
+
+      expect(userAfter?.lastLoginAt).toBeDefined();
+      expect(userAfter?.lastLoginAt).not.toBe(userBefore?.lastLoginAt);
+    });
   });
 
   describe('Invalid Credentials', () => {
     it('should reject wrong password', async () => {
-      await prisma.user.create({
-        data: {
-          name: 'Test User',
-          email: 'wrongpass@example.com',
-          password: hashedPassword,
-          role: 'user',
-        },
+      await createTestContext({
+        userEmail: 'wrongpass@example.com',
+        userPassword: testPassword,
       });
 
       const authorize = (credentialsProvider as { options: { authorize: AuthorizeFunction } }).options.authorize;
@@ -158,6 +188,30 @@ describe('NextAuth Credentials Login', () => {
     });
   });
 
+  describe('User status checks', () => {
+    it('should reject suspended user', async () => {
+      // Create user directly with suspended status
+      const hashedPwd = await bcrypt.hash(testPassword, 10);
+      await prisma.user.create({
+        data: {
+          name: 'Suspended User',
+          email: 'suspended@example.com',
+          password: hashedPwd,
+          status: 'suspended',
+        },
+      });
+
+      const authorize = (credentialsProvider as { options: { authorize: AuthorizeFunction } }).options.authorize;
+
+      await expect(
+        authorize({
+          email: 'suspended@example.com',
+          password: testPassword,
+        })
+      ).rejects.toThrow('帳號已被停用');
+    });
+  });
+
   describe('User without password (OAuth user)', () => {
     it('should reject OAuth user trying to login with credentials', async () => {
       // Create OAuth user without password
@@ -166,7 +220,7 @@ describe('NextAuth Credentials Login', () => {
           name: 'OAuth User',
           email: 'oauth@example.com',
           password: null, // OAuth users don't have password
-          role: 'user',
+          status: 'active',
         },
       });
 

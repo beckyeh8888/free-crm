@@ -1,11 +1,13 @@
 /**
  * Audit Log Integration Tests
  * Tests audit logging functionality for ISO 27001 compliance
+ *
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
-import { createUser } from '@tests/factories/user.factory';
+import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
 import { createCustomer } from '@tests/factories/customer.factory';
 import { POST as CREATE_CUSTOMER } from '@/app/api/customers/route';
 import { PATCH, DELETE } from '@/app/api/customers/[id]/route';
@@ -19,24 +21,24 @@ vi.mock('next-auth', () => ({
 import { getServerSession } from 'next-auth';
 
 describe('Audit Log', () => {
-  let testUser: Awaited<ReturnType<typeof createUser>>;
+  let testCtx: TestContext;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     await clearDatabase();
-    testUser = await createUser({ email: 'audit@example.com' });
+    testCtx = await createTestContext({ userEmail: 'audit@example.com' });
   });
 
-  const mockAuth = (user: typeof testUser) => {
+  const mockAuth = (ctx: TestContext) => {
     vi.mocked(getServerSession).mockResolvedValue({
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email },
       expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
   };
 
   describe('Create operations', () => {
     it('should log create action with entity details', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/customers', {
         method: 'POST',
@@ -49,7 +51,7 @@ describe('Audit Log', () => {
       });
 
       expect(auditLogs.length).toBe(1);
-      expect(auditLogs[0].userId).toBe(testUser.id);
+      expect(auditLogs[0].userId).toBe(testCtx.user.id);
       expect(auditLogs[0].entityId).toBeDefined();
 
       // Verify details contain entity information
@@ -59,7 +61,7 @@ describe('Audit Log', () => {
     });
 
     it('should log entityId correctly', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/customers', {
         method: 'POST',
@@ -79,10 +81,11 @@ describe('Audit Log', () => {
 
   describe('Update operations', () => {
     it('should log update action with before/after state', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const customer = await createCustomer({
-        userId: testUser.id,
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
         name: 'Before Update',
         email: 'before@example.com',
       });
@@ -98,7 +101,7 @@ describe('Audit Log', () => {
       });
 
       expect(auditLogs.length).toBe(1);
-      expect(auditLogs[0].userId).toBe(testUser.id);
+      expect(auditLogs[0].userId).toBe(testCtx.user.id);
 
       // Verify details contain before/after state
       const details = JSON.parse(auditLogs[0].details || '{}');
@@ -109,10 +112,11 @@ describe('Audit Log', () => {
     });
 
     it('should track partial updates', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const customer = await createCustomer({
-        userId: testUser.id,
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
         name: 'Original Name',
         status: 'active',
       });
@@ -134,10 +138,11 @@ describe('Audit Log', () => {
 
   describe('Delete operations', () => {
     it('should log delete action with entity details', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const customer = await createCustomer({
-        userId: testUser.id,
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
         name: 'Delete Test',
         email: 'delete@example.com',
       });
@@ -153,7 +158,7 @@ describe('Audit Log', () => {
       });
 
       expect(auditLogs.length).toBe(1);
-      expect(auditLogs[0].userId).toBe(testUser.id);
+      expect(auditLogs[0].userId).toBe(testCtx.user.id);
 
       // Verify details contain deleted entity information
       const details = JSON.parse(auditLogs[0].details || '{}');
@@ -162,9 +167,13 @@ describe('Audit Log', () => {
     });
 
     it('should log cascade delete information', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id, name: 'Cascade Test' });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Cascade Test',
+      });
 
       // Create contacts and deals
       await prisma.contact.create({
@@ -197,7 +206,7 @@ describe('Audit Log', () => {
 
   describe('Audit log metadata', () => {
     it('should record user ID for all actions', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/customers', {
         method: 'POST',
@@ -209,11 +218,11 @@ describe('Audit Log', () => {
         where: { entity: 'customer' },
       });
 
-      expect(auditLog?.userId).toBe(testUser.id);
+      expect(auditLog?.userId).toBe(testCtx.user.id);
     });
 
     it('should record timestamp for all actions', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
       const beforeTime = new Date();
 
       const request = createMockRequest('/api/customers', {
@@ -234,9 +243,13 @@ describe('Audit Log', () => {
     });
 
     it('should maintain audit history for same entity', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id, name: 'History Test' });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'History Test',
+      });
 
       // Update multiple times
       for (let i = 0; i < 3; i++) {
@@ -265,7 +278,7 @@ describe('Audit Log', () => {
 
   describe('Audit log queries', () => {
     it('should be able to query by entity type', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       // Create customer via API to generate audit log
       const request = createMockRequest('/api/customers', {
@@ -279,7 +292,7 @@ describe('Audit Log', () => {
         data: {
           action: 'create',
           entity: 'deal',
-          userId: testUser.id,
+          userId: testCtx.user.id,
         },
       });
 
@@ -296,9 +309,12 @@ describe('Audit Log', () => {
     });
 
     it('should be able to query by action type', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const customer = await createCustomer({ userId: testUser.id });
+      const customer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+      });
 
       // Create an update log
       const request = createMockRequest(`/api/customers/${customer.id}`, {
@@ -320,7 +336,7 @@ describe('Audit Log', () => {
     });
 
     it('should be able to query by date range', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const startTime = new Date();
 

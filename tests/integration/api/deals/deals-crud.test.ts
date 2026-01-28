@@ -2,6 +2,8 @@
  * Deal CRUD API Integration Tests
  * GET/POST /api/deals
  * GET/PATCH/DELETE /api/deals/[id]
+ *
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -13,7 +15,7 @@ import {
 } from '@/app/api/deals/[id]/route';
 import { createMockRequest, parseResponse } from '@tests/helpers/request-helpers';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
-import { createUser } from '@tests/factories/user.factory';
+import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
 import { createCustomer } from '@tests/factories/customer.factory';
 import { createDeal, createDealsAtAllStages } from '@tests/factories/deal.factory';
 
@@ -25,21 +27,25 @@ vi.mock('next-auth', () => ({
 import { getServerSession } from 'next-auth';
 
 describe('Deal API', () => {
-  let testUser: Awaited<ReturnType<typeof createUser>>;
+  let testCtx: TestContext;
   let testCustomer: Awaited<ReturnType<typeof createCustomer>>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     await clearDatabase();
-    testUser = await createUser({ email: 'test@example.com' });
-    testCustomer = await createCustomer({ userId: testUser.id, name: 'Test Customer' });
+    testCtx = await createTestContext({ userEmail: 'test@example.com' });
+    testCustomer = await createCustomer({
+      organizationId: testCtx.organization.id,
+      createdById: testCtx.user.id,
+      name: 'Test Customer',
+    });
   });
 
-  const mockAuth = (user: typeof testUser | null) => {
+  const mockAuth = (ctx: TestContext | null) => {
     vi.mocked(getServerSession).mockResolvedValue(
-      user
+      ctx
         ? {
-            user: { id: user.id, name: user.name, email: user.email, role: user.role },
+            user: { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email },
             expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           }
         : null
@@ -57,15 +63,18 @@ describe('Deal API', () => {
     });
 
     it('should return only deals from users customers', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createDeal({ customerId: testCustomer.id, title: 'My Deal 1' });
-      await createDeal({ customerId: testCustomer.id, title: 'My Deal 2' });
+      await createDeal({ customerId: testCustomer.id, title: 'My Deal 1', createdById: testCtx.user.id });
+      await createDeal({ customerId: testCustomer.id, title: 'My Deal 2', createdById: testCtx.user.id });
 
       // Create deal for another user's customer
-      const otherUser = await createUser({ email: 'other@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
-      await createDeal({ customerId: otherCustomer.id, title: 'Other Deal' });
+      const otherCtx = await createTestContext({ userEmail: 'other@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
+      await createDeal({ customerId: otherCustomer.id, title: 'Other Deal', createdById: otherCtx.user.id });
 
       const request = createMockRequest('/api/deals');
       const response = await GET(request);
@@ -78,9 +87,9 @@ describe('Deal API', () => {
     });
 
     it('should include customer information', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createDeal({ customerId: testCustomer.id, title: 'Deal with Customer' });
+      await createDeal({ customerId: testCustomer.id, title: 'Deal with Customer', createdById: testCtx.user.id });
 
       const request = createMockRequest('/api/deals');
       const response = await GET(request);
@@ -93,9 +102,9 @@ describe('Deal API', () => {
     });
 
     it('should filter by stage', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createDealsAtAllStages(testCustomer.id);
+      await createDealsAtAllStages(testCustomer.id, testCtx.user.id);
 
       const request = createMockRequest('/api/deals', {
         searchParams: { stage: 'proposal' },
@@ -109,11 +118,15 @@ describe('Deal API', () => {
     });
 
     it('should filter by customerId', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const secondCustomer = await createCustomer({ userId: testUser.id, name: 'Second Customer' });
-      await createDeal({ customerId: testCustomer.id, title: 'First Customer Deal' });
-      await createDeal({ customerId: secondCustomer.id, title: 'Second Customer Deal' });
+      const secondCustomer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Second Customer',
+      });
+      await createDeal({ customerId: testCustomer.id, title: 'First Customer Deal', createdById: testCtx.user.id });
+      await createDeal({ customerId: secondCustomer.id, title: 'Second Customer Deal', createdById: testCtx.user.id });
 
       const request = createMockRequest('/api/deals', {
         searchParams: { customerId: secondCustomer.id },
@@ -127,11 +140,11 @@ describe('Deal API', () => {
     });
 
     it('should filter by value range', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createDeal({ customerId: testCustomer.id, title: 'Small Deal', value: 10000 });
-      await createDeal({ customerId: testCustomer.id, title: 'Medium Deal', value: 50000 });
-      await createDeal({ customerId: testCustomer.id, title: 'Large Deal', value: 100000 });
+      await createDeal({ customerId: testCustomer.id, title: 'Small Deal', value: 10000, createdById: testCtx.user.id });
+      await createDeal({ customerId: testCustomer.id, title: 'Medium Deal', value: 50000, createdById: testCtx.user.id });
+      await createDeal({ customerId: testCustomer.id, title: 'Large Deal', value: 100000, createdById: testCtx.user.id });
 
       const request = createMockRequest('/api/deals', {
         searchParams: { minValue: '20000', maxValue: '60000' },
@@ -145,10 +158,10 @@ describe('Deal API', () => {
     });
 
     it('should search by title', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      await createDeal({ customerId: testCustomer.id, title: 'Enterprise Software License' });
-      await createDeal({ customerId: testCustomer.id, title: 'Consulting Services' });
+      await createDeal({ customerId: testCustomer.id, title: 'Enterprise Software License', createdById: testCtx.user.id });
+      await createDeal({ customerId: testCustomer.id, title: 'Consulting Services', createdById: testCtx.user.id });
 
       const request = createMockRequest('/api/deals', {
         searchParams: { search: 'Software' },
@@ -176,7 +189,7 @@ describe('Deal API', () => {
     });
 
     it('should create deal successfully', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/deals', {
         method: 'POST',
@@ -198,7 +211,7 @@ describe('Deal API', () => {
     });
 
     it('should reject deal for non-existent customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       // Use a valid-looking CUID format that doesn't exist
       const request = createMockRequest('/api/deals', {
@@ -215,10 +228,13 @@ describe('Deal API', () => {
     });
 
     it('should reject deal for other users customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other2@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
+      const otherCtx = await createTestContext({ userEmail: 'other2@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
 
       const request = createMockRequest('/api/deals', {
         method: 'POST',
@@ -233,7 +249,7 @@ describe('Deal API', () => {
     });
 
     it('should reject invalid data', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/deals', {
         method: 'POST',
@@ -249,7 +265,7 @@ describe('Deal API', () => {
     it('should return 401 for unauthenticated request', async () => {
       mockAuth(null);
 
-      const deal = await createDeal({ customerId: testCustomer.id });
+      const deal = await createDeal({ customerId: testCustomer.id, createdById: testCtx.user.id });
       const request = createMockRequest(`/api/deals/${deal.id}`);
       const response = await GET_BY_ID(request, { params: Promise.resolve({ id: deal.id }) });
 
@@ -257,9 +273,9 @@ describe('Deal API', () => {
     });
 
     it('should return deal with customer details', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const deal = await createDeal({ customerId: testCustomer.id, title: 'Detail Deal' });
+      const deal = await createDeal({ customerId: testCustomer.id, title: 'Detail Deal', createdById: testCtx.user.id });
       const request = createMockRequest(`/api/deals/${deal.id}`);
       const response = await GET_BY_ID(request, { params: Promise.resolve({ id: deal.id }) });
       const data = await parseResponse<{ success: boolean; data: { id: string; title: string; customer: { id: string } } }>(response);
@@ -271,7 +287,7 @@ describe('Deal API', () => {
     });
 
     it('should return 404 for non-existent deal', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/deals/non-existent');
       const response = await GET_BY_ID(request, { params: Promise.resolve({ id: 'non-existent' }) });
@@ -279,17 +295,20 @@ describe('Deal API', () => {
       expect(response.status).toBe(404);
     });
 
-    it('should return 404 for other users deal', async () => {
-      mockAuth(testUser);
+    it('should return 403 for other users deal', async () => {
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other3@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
-      const otherDeal = await createDeal({ customerId: otherCustomer.id });
+      const otherCtx = await createTestContext({ userEmail: 'other3@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
+      const otherDeal = await createDeal({ customerId: otherCustomer.id, createdById: otherCtx.user.id });
 
       const request = createMockRequest(`/api/deals/${otherDeal.id}`);
       const response = await GET_BY_ID(request, { params: Promise.resolve({ id: otherDeal.id }) });
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(403);
     });
   });
 
@@ -297,7 +316,7 @@ describe('Deal API', () => {
     it('should return 401 for unauthenticated request', async () => {
       mockAuth(null);
 
-      const deal = await createDeal({ customerId: testCustomer.id });
+      const deal = await createDeal({ customerId: testCustomer.id, createdById: testCtx.user.id });
       const request = createMockRequest(`/api/deals/${deal.id}`, {
         method: 'PATCH',
         body: { stage: 'qualified' },
@@ -308,9 +327,9 @@ describe('Deal API', () => {
     });
 
     it('should update deal stage successfully', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const deal = await createDeal({ customerId: testCustomer.id, stage: 'lead' });
+      const deal = await createDeal({ customerId: testCustomer.id, stage: 'lead', createdById: testCtx.user.id });
       const request = createMockRequest(`/api/deals/${deal.id}`, {
         method: 'PATCH',
         body: { stage: 'qualified', probability: 30 },
@@ -324,9 +343,9 @@ describe('Deal API', () => {
     });
 
     it('should update deal value', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const deal = await createDeal({ customerId: testCustomer.id, value: 10000 });
+      const deal = await createDeal({ customerId: testCustomer.id, value: 10000, createdById: testCtx.user.id });
       const request = createMockRequest(`/api/deals/${deal.id}`, {
         method: 'PATCH',
         body: { value: 25000 },
@@ -338,12 +357,15 @@ describe('Deal API', () => {
       expect(data.data.value).toBe(25000);
     });
 
-    it('should return 404 for other users deal', async () => {
-      mockAuth(testUser);
+    it('should return 403 for other users deal', async () => {
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other4@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
-      const otherDeal = await createDeal({ customerId: otherCustomer.id });
+      const otherCtx = await createTestContext({ userEmail: 'other4@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
+      const otherDeal = await createDeal({ customerId: otherCustomer.id, createdById: otherCtx.user.id });
 
       const request = createMockRequest(`/api/deals/${otherDeal.id}`, {
         method: 'PATCH',
@@ -351,13 +373,13 @@ describe('Deal API', () => {
       });
       const response = await PATCH(request, { params: Promise.resolve({ id: otherDeal.id }) });
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(403);
     });
 
     it('should create audit log on update', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const deal = await createDeal({ customerId: testCustomer.id, stage: 'lead' });
+      const deal = await createDeal({ customerId: testCustomer.id, stage: 'lead', createdById: testCtx.user.id });
       const request = createMockRequest(`/api/deals/${deal.id}`, {
         method: 'PATCH',
         body: { stage: 'closed_won' },
@@ -376,7 +398,7 @@ describe('Deal API', () => {
     it('should return 401 for unauthenticated request', async () => {
       mockAuth(null);
 
-      const deal = await createDeal({ customerId: testCustomer.id });
+      const deal = await createDeal({ customerId: testCustomer.id, createdById: testCtx.user.id });
       const request = createMockRequest(`/api/deals/${deal.id}`, { method: 'DELETE' });
       const response = await DELETE(request, { params: Promise.resolve({ id: deal.id }) });
 
@@ -384,9 +406,9 @@ describe('Deal API', () => {
     });
 
     it('should delete deal successfully', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const deal = await createDeal({ customerId: testCustomer.id });
+      const deal = await createDeal({ customerId: testCustomer.id, createdById: testCtx.user.id });
       const request = createMockRequest(`/api/deals/${deal.id}`, { method: 'DELETE' });
       const response = await DELETE(request, { params: Promise.resolve({ id: deal.id }) });
       const data = await parseResponse<{ success: boolean; data: { deleted: boolean } }>(response);
@@ -399,23 +421,26 @@ describe('Deal API', () => {
       expect(deletedDeal).toBeNull();
     });
 
-    it('should return 404 for other users deal', async () => {
-      mockAuth(testUser);
+    it('should return 403 for other users deal', async () => {
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other5@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
-      const otherDeal = await createDeal({ customerId: otherCustomer.id });
+      const otherCtx = await createTestContext({ userEmail: 'other5@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
+      const otherDeal = await createDeal({ customerId: otherCustomer.id, createdById: otherCtx.user.id });
 
       const request = createMockRequest(`/api/deals/${otherDeal.id}`, { method: 'DELETE' });
       const response = await DELETE(request, { params: Promise.resolve({ id: otherDeal.id }) });
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(403);
     });
 
     it('should create audit log on delete', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const deal = await createDeal({ customerId: testCustomer.id, title: 'Delete Audit Test' });
+      const deal = await createDeal({ customerId: testCustomer.id, title: 'Delete Audit Test', createdById: testCtx.user.id });
       const dealId = deal.id;
 
       const request = createMockRequest(`/api/deals/${dealId}`, { method: 'DELETE' });

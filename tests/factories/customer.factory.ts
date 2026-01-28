@@ -1,11 +1,14 @@
 /**
  * Customer Test Data Factory
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { prisma } from '@/lib/prisma';
 
 export interface CustomerFactoryData {
-  userId: string;
+  organizationId: string;
+  createdById: string;
+  assignedToId?: string;
   name?: string;
   email?: string;
   phone?: string;
@@ -23,7 +26,9 @@ let customerCounter = 0;
 export function buildCustomer(overrides: CustomerFactoryData) {
   customerCounter++;
   return {
-    userId: overrides.userId,
+    organizationId: overrides.organizationId,
+    createdById: overrides.createdById,
+    assignedToId: overrides.assignedToId,
     name: overrides.name ?? `Test Customer ${customerCounter}`,
     email: overrides.email ?? `customer-${customerCounter}-${Date.now()}@example.com`,
     phone: overrides.phone ?? '0912-345-678',
@@ -87,6 +92,7 @@ export async function createCustomerWithDeals(
           title: `Deal ${i + 1}`,
           value: (i + 1) * 10000,
           stage: 'lead',
+          createdById: overrides.createdById,
         },
       })
     )

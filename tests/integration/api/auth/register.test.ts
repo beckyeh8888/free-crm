@@ -1,6 +1,8 @@
 /**
  * Registration API Integration Tests
  * POST /api/auth/register
+ *
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -70,6 +72,7 @@ describe('POST /api/auth/register', () => {
       const response = await POST(request);
       const data = await parseResponse<{ user: Record<string, unknown> }>(response);
 
+      expect(data.user).toBeDefined();
       expect(data.user).not.toHaveProperty('password');
     });
 
@@ -93,6 +96,25 @@ describe('POST /api/auth/register', () => {
       expect(auditLogs[0].action).toBe('create');
       expect(auditLogs[0].entity).toBe('user');
     });
+
+    it('should create user with active status by default', async () => {
+      const request = createMockRequest('/api/auth/register', {
+        method: 'POST',
+        body: {
+          name: 'Test User',
+          email: 'status-test@example.com',
+          password: 'TestPass123!',
+        },
+      });
+
+      await POST(request);
+
+      const user = await prisma.user.findUnique({
+        where: { email: 'status-test@example.com' },
+      });
+
+      expect(user?.status).toBe('active');
+    });
   });
 
   describe('Duplicate Email', () => {
@@ -103,6 +125,7 @@ describe('POST /api/auth/register', () => {
           name: 'Existing User',
           email: 'existing@example.com',
           password: await bcrypt.hash('TestPass123!', 10),
+          status: 'active',
         },
       });
 

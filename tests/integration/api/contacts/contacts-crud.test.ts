@@ -2,6 +2,8 @@
  * Contact CRUD API Integration Tests
  * GET/POST /api/customers/[id]/contacts
  * PATCH/DELETE /api/customers/[id]/contacts/[contactId]
+ *
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -9,7 +11,7 @@ import { GET, POST } from '@/app/api/customers/[id]/contacts/route';
 import { PATCH, DELETE } from '@/app/api/customers/[id]/contacts/[contactId]/route';
 import { createMockRequest, parseResponse } from '@tests/helpers/request-helpers';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
-import { createUser } from '@tests/factories/user.factory';
+import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
 import { createCustomer } from '@tests/factories/customer.factory';
 import { createContact, createPrimaryContact } from '@tests/factories/contact.factory';
 
@@ -21,21 +23,25 @@ vi.mock('next-auth', () => ({
 import { getServerSession } from 'next-auth';
 
 describe('Contact API', () => {
-  let testUser: Awaited<ReturnType<typeof createUser>>;
+  let testCtx: TestContext;
   let testCustomer: Awaited<ReturnType<typeof createCustomer>>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     await clearDatabase();
-    testUser = await createUser({ email: 'test@example.com' });
-    testCustomer = await createCustomer({ userId: testUser.id, name: 'Test Customer' });
+    testCtx = await createTestContext({ userEmail: 'test@example.com' });
+    testCustomer = await createCustomer({
+      organizationId: testCtx.organization.id,
+      createdById: testCtx.user.id,
+      name: 'Test Customer',
+    });
   });
 
-  const mockAuth = (user: typeof testUser | null) => {
+  const mockAuth = (ctx: TestContext | null) => {
     vi.mocked(getServerSession).mockResolvedValue(
-      user
+      ctx
         ? {
-            user: { id: user.id, name: user.name, email: user.email, role: user.role },
+            user: { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email },
             expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           }
         : null
@@ -53,7 +59,7 @@ describe('Contact API', () => {
     });
 
     it('should return contacts for the customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       await createContact({ customerId: testCustomer.id, name: 'Contact 1' });
       await createContact({ customerId: testCustomer.id, name: 'Contact 2' });
@@ -68,10 +74,13 @@ describe('Contact API', () => {
     });
 
     it('should return 403 for other users customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
+      const otherCtx = await createTestContext({ userEmail: 'other@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
 
       const request = createMockRequest(`/api/customers/${otherCustomer.id}/contacts`);
       const response = await GET(request, { params: Promise.resolve({ id: otherCustomer.id }) });
@@ -80,7 +89,7 @@ describe('Contact API', () => {
     });
 
     it('should return 404 for non-existent customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest('/api/customers/non-existent/contacts');
       const response = await GET(request, { params: Promise.resolve({ id: 'non-existent' }) });
@@ -89,7 +98,7 @@ describe('Contact API', () => {
     });
 
     it('should order by isPrimary first', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       await createContact({ customerId: testCustomer.id, name: 'Regular Contact', isPrimary: false });
       await createContact({ customerId: testCustomer.id, name: 'Primary Contact', isPrimary: true });
@@ -117,7 +126,7 @@ describe('Contact API', () => {
     });
 
     it('should create contact successfully', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest(`/api/customers/${testCustomer.id}/contacts`, {
         method: 'POST',
@@ -137,10 +146,13 @@ describe('Contact API', () => {
     });
 
     it('should return 403 for other users customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other2@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
+      const otherCtx = await createTestContext({ userEmail: 'other2@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
 
       const request = createMockRequest(`/api/customers/${otherCustomer.id}/contacts`, {
         method: 'POST',
@@ -152,7 +164,7 @@ describe('Contact API', () => {
     });
 
     it('should reject invalid data', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest(`/api/customers/${testCustomer.id}/contacts`, {
         method: 'POST',
@@ -164,7 +176,7 @@ describe('Contact API', () => {
     });
 
     it('should set as primary and unset other primaries', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       // Create existing primary contact
       const existingPrimary = await createPrimaryContact(testCustomer.id, { name: 'Old Primary' });
@@ -204,7 +216,7 @@ describe('Contact API', () => {
     });
 
     it('should update contact successfully', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const contact = await createContact({ customerId: testCustomer.id, name: 'Original' });
       const request = createMockRequest(`/api/customers/${testCustomer.id}/contacts/${contact.id}`, {
@@ -222,7 +234,7 @@ describe('Contact API', () => {
     });
 
     it('should return 404 for non-existent contact', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest(`/api/customers/${testCustomer.id}/contacts/non-existent`, {
         method: 'PATCH',
@@ -236,9 +248,13 @@ describe('Contact API', () => {
     });
 
     it('should return 404 for contact belonging to different customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const otherCustomer = await createCustomer({ userId: testUser.id, name: 'Other Customer' });
+      const otherCustomer = await createCustomer({
+        organizationId: testCtx.organization.id,
+        createdById: testCtx.user.id,
+        name: 'Other Customer',
+      });
       const otherContact = await createContact({ customerId: otherCustomer.id });
 
       const request = createMockRequest(`/api/customers/${testCustomer.id}/contacts/${otherContact.id}`, {
@@ -253,7 +269,7 @@ describe('Contact API', () => {
     });
 
     it('should update isPrimary and unset other primaries', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const primary = await createPrimaryContact(testCustomer.id, { name: 'Current Primary' });
       const regular = await createContact({ customerId: testCustomer.id, name: 'Regular', isPrimary: false });
@@ -292,7 +308,7 @@ describe('Contact API', () => {
     });
 
     it('should delete contact successfully', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const contact = await createContact({ customerId: testCustomer.id });
       const request = createMockRequest(`/api/customers/${testCustomer.id}/contacts/${contact.id}`, {
@@ -312,7 +328,7 @@ describe('Contact API', () => {
     });
 
     it('should return 404 for non-existent contact', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
       const request = createMockRequest(`/api/customers/${testCustomer.id}/contacts/non-existent`, {
         method: 'DELETE',
@@ -325,10 +341,13 @@ describe('Contact API', () => {
     });
 
     it('should return 403 for other users customer', async () => {
-      mockAuth(testUser);
+      mockAuth(testCtx);
 
-      const otherUser = await createUser({ email: 'other3@example.com' });
-      const otherCustomer = await createCustomer({ userId: otherUser.id });
+      const otherCtx = await createTestContext({ userEmail: 'other3@example.com' });
+      const otherCustomer = await createCustomer({
+        organizationId: otherCtx.organization.id,
+        createdById: otherCtx.user.id,
+      });
       const otherContact = await createContact({ customerId: otherCustomer.id });
 
       const request = createMockRequest(`/api/customers/${otherCustomer.id}/contacts/${otherContact.id}`, {

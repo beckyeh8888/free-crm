@@ -1,6 +1,8 @@
 /**
  * Test Database Utilities
  * Provides database setup, cleanup, and isolation for tests
+ *
+ * Updated for multi-tenant schema (Sprint 2)
  */
 
 import { prisma } from '@/lib/prisma';
@@ -34,15 +36,34 @@ async function withRetry<T>(
 export async function clearDatabase() {
   // Delete in reverse dependency order to avoid foreign key constraints
   // Using sequential deletes with retry to handle SQLite SQLITE_BUSY errors
+
+  // Document related
   await withRetry(() => prisma.documentAnalysis.deleteMany());
   await withRetry(() => prisma.document.deleteMany());
+
+  // Audit and security
   await withRetry(() => prisma.auditLog.deleteMany());
+  await withRetry(() => prisma.loginHistory.deleteMany());
+  await withRetry(() => prisma.twoFactorAuth.deleteMany());
+
+  // Business entities
   await withRetry(() => prisma.deal.deleteMany());
   await withRetry(() => prisma.contact.deleteMany());
   await withRetry(() => prisma.customer.deleteMany());
+
+  // RBAC and multi-tenant (in reverse order)
+  await withRetry(() => prisma.rolePermission.deleteMany());
+  await withRetry(() => prisma.permission.deleteMany());
+  await withRetry(() => prisma.organizationMember.deleteMany());
+  await withRetry(() => prisma.role.deleteMany());
+  await withRetry(() => prisma.organization.deleteMany());
+
+  // Auth related
   await withRetry(() => prisma.session.deleteMany());
   await withRetry(() => prisma.account.deleteMany());
   await withRetry(() => prisma.verificationToken.deleteMany());
+
+  // Users last
   await withRetry(() => prisma.user.deleteMany());
 }
 
