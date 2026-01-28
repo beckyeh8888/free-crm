@@ -49,8 +49,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests with coverage
-        run: npm run test:unit -- --coverage
+      - name: Run all tests with coverage
+        run: npm run test:coverage
         env:
           CI: true
         continue-on-error: true  # 允許測試失敗但繼續 SonarCloud 分析
