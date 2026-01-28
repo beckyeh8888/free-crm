@@ -52,7 +52,7 @@ jobs:
       - name: Setup Prisma
         run: |
           npx prisma generate
-          npx prisma db push --skip-generate
+          npx prisma db push --accept-data-loss
         env:
           DATABASE_URL: "file:./test.db"
 
