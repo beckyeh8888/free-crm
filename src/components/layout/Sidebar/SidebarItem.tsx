@@ -2,20 +2,21 @@
 
 /**
  * SidebarItem - Individual navigation item in the sidebar
+ * Calm CRM Dark Theme
  */
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { useSidebar } from './SidebarContext';
 
 export interface SidebarItemProps {
   readonly href: string;
   readonly label: string;
-  readonly icon: ReactNode;
+  readonly icon: LucideIcon;
 }
 
-export function SidebarItem({ href, label, icon }: SidebarItemProps) {
+export function SidebarItem({ href, label, icon: Icon }: SidebarItemProps) {
   const pathname = usePathname();
   const { isCollapsed } = useSidebar();
 
@@ -30,22 +31,30 @@ export function SidebarItem({ href, label, icon }: SidebarItemProps) {
         min-h-[44px]
         ${
           isActive
-            ? 'bg-primary-100 text-primary-900 dark:bg-primary-800 dark:text-primary-100'
-            : 'text-primary-600 hover:bg-primary-50 hover:text-primary-900 dark:text-primary-400 dark:hover:bg-primary-800/50 dark:hover:text-primary-100'
+            ? 'bg-background-hover text-text-primary'
+            : 'text-text-secondary hover:bg-background-tertiary hover:text-text-primary'
         }
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background
       `}
       aria-current={isActive ? 'page' : undefined}
     >
+      {/* Active indicator bar */}
+      {isActive && (
+        <span
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-accent-600 rounded-r"
+          aria-hidden="true"
+        />
+      )}
+
       {/* Icon */}
       <span
         className={`
-          flex-shrink-0 w-5 h-5
-          ${isActive ? 'text-accent-600 dark:text-accent-400' : ''}
+          flex-shrink-0
+          ${isActive ? 'text-accent-600' : ''}
         `}
         aria-hidden="true"
       >
-        {icon}
+        <Icon className="w-5 h-5" />
       </span>
 
       {/* Label */}
@@ -63,11 +72,10 @@ export function SidebarItem({ href, label, icon }: SidebarItemProps) {
         <span
           className="
             absolute left-full ml-2 px-2 py-1
-            bg-primary-900 text-white text-sm rounded
+            bg-background-tertiary text-text-primary text-sm rounded border border-border
             opacity-0 invisible group-hover:opacity-100 group-hover:visible
             transition-opacity duration-200
             whitespace-nowrap z-50
-            dark:bg-primary-700
           "
           role="tooltip"
         >

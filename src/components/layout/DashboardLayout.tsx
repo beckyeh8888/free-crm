@@ -2,12 +2,13 @@
 
 /**
  * DashboardLayout - Main layout wrapper for dashboard pages
- * WCAG 2.2 AAA Compliant
+ * Calm CRM Dark Theme - WCAG 2.2 AAA Compliant
  */
 
 import { ReactNode } from 'react';
 import { SidebarProvider, Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { MobileTabBar } from './MobileTabBar';
 
 interface DashboardLayoutProps {
   readonly children: ReactNode;
@@ -16,8 +17,8 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-background-secondary dark:bg-primary-950 overflow-hidden">
-        {/* Sidebar */}
+      <div className="flex h-screen bg-background overflow-hidden">
+        {/* Sidebar (desktop only) */}
         <Sidebar />
 
         {/* Main Content Area */}
@@ -28,14 +29,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Main Content */}
           <main
             id="main-content"
-            className="flex-1 overflow-auto"
+            className="flex-1 overflow-auto pb-16 lg:pb-0"
             role="main"
             aria-label="主要內容"
           >
-            <div className="p-6">
+            <div className="p-4 lg:p-6">
               {children}
             </div>
           </main>
+
+          {/* Mobile Tab Bar */}
+          <MobileTabBar />
         </div>
       </div>
     </SidebarProvider>

@@ -1,276 +1,93 @@
+'use client';
+
 /**
- * Dashboard Page - WCAG 2.2 AAA Compliant
- * Protected route - requires authentication
+ * Dashboard Page - Calm CRM Dark Theme
+ * WCAG 2.2 AAA Compliant
  */
 
-import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import Link from 'next/link';
+import { Users, Handshake, FileText, DollarSign } from 'lucide-react';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
+import { StatCard } from '@/components/features/dashboard/StatCard';
+import { PipelineOverview } from '@/components/features/dashboard/PipelineOverview';
+import { RecentActivity } from '@/components/features/dashboard/RecentActivity';
 
-// Status styling mappings (extracted from nested ternary - S3358)
-const customerStatusStyles: Record<string, string> = {
-  active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  lead: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-};
+function formatCurrency(value: number): string {
+  if (value >= 1000000) {
+    return `NT$${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `NT$${(value / 1000).toFixed(0)}K`;
+  }
+  return `NT$${value}`;
+}
 
-const customerStatusLabels: Record<string, string> = {
-  active: '活躍',
-  lead: '潛在',
-  inactive: '停用',
-};
+export default function DashboardPage() {
+  const { data, isLoading, error } = useDashboardStats();
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    redirect('/login');
+  if (isLoading) {
+    return <DashboardSkeleton />;
   }
 
-  // Fetch dashboard statistics
-  // For multi-tenant: show data where user is creator or assigned
-  const [customerCount, dealCount, documentCount] = await Promise.all([
-    prisma.customer.count({
-      where: {
-        OR: [
-          { createdById: session.user.id },
-          { assignedToId: session.user.id },
-        ],
-      },
-    }),
-    prisma.deal.count({
-      where: {
-        OR: [
-          { createdById: session.user.id },
-          { assignedToId: session.user.id },
-        ],
-      },
-    }),
-    prisma.document.count({
-      where: {
-        customer: {
-          OR: [
-            { createdById: session.user.id },
-            { assignedToId: session.user.id },
-          ],
-        },
-      },
-    }),
-  ]);
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-text-secondary">無法載入儀表板資料</p>
+      </div>
+    );
+  }
 
-  // Fetch recent customers
-  const recentCustomers = await prisma.customer.findMany({
-    where: {
-      OR: [
-        { createdById: session.user.id },
-        { assignedToId: session.user.id },
-      ],
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 5,
-    select: {
-      id: true,
-      name: true,
-      company: true,
-      status: true,
-      createdAt: true,
-    },
-  });
+  const stats = data?.data;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Skip Link */}
-      <a href="#main-content" className="skip-link">
-        跳至主要內容
-      </a>
-
-      {/* Header */}
-      <header role="banner" className="bg-white dark:bg-gray-900 shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-foreground">Free CRM</h1>
-            <nav role="navigation" aria-label="主選單">
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {session.user.name || session.user.email}
-                </span>
-                <Link
-                  href="/api/auth/signout"
-                  className="text-sm text-red-600 hover:text-red-700 dark:text-red-400"
-                >
-                  登出
-                </Link>
-              </div>
-            </nav>
-          </div>
+    <div className="space-y-6">
+      {/* Stat Cards */}
+      <section aria-labelledby="stats-heading">
+        <h2 id="stats-heading" className="sr-only">統計數據</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <StatCard
+            label="客戶總數"
+            value={stats?.customerCount ?? 0}
+            icon={Users}
+          />
+          <StatCard
+            label="進行中商機"
+            value={stats?.dealCount ?? 0}
+            icon={Handshake}
+          />
+          <StatCard
+            label="文件數量"
+            value={stats?.documentCount ?? 0}
+            icon={FileText}
+          />
+          <StatCard
+            label="總營收"
+            value={formatCurrency(stats?.totalRevenue ?? 0)}
+            icon={DollarSign}
+          />
         </div>
-      </header>
+      </section>
 
-      {/* Main Content */}
-      <main id="main-content" role="main" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <section aria-labelledby="welcome-heading" className="mb-8">
-          <h2 id="welcome-heading" className="text-2xl font-bold text-foreground">
-            歡迎回來，{session.user.name || '使用者'}
-          </h2>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">
-            這是您的 CRM 儀表板概覽
-          </p>
-        </section>
+      {/* Pipeline + Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PipelineOverview stages={stats?.pipelineStages ?? []} />
+        <RecentActivity activities={stats?.recentActivity ?? []} />
+      </div>
+    </div>
+  );
+}
 
-        {/* Statistics Cards */}
-        <section aria-labelledby="stats-heading" className="mb-8">
-          <h3 id="stats-heading" className="sr-only">
-            統計數據
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Customers Card */}
-            <article className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    客戶數量
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-foreground">
-                    {customerCount}
-                  </p>
-                </div>
-                <div
-                  className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center"
-                  aria-hidden="true"
-                >
-                  <span className="text-2xl">👥</span>
-                </div>
-              </div>
-            </article>
-
-            {/* Deals Card */}
-            <article className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    商機數量
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-foreground">
-                    {dealCount}
-                  </p>
-                </div>
-                <div
-                  className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center"
-                  aria-hidden="true"
-                >
-                  <span className="text-2xl">💼</span>
-                </div>
-              </div>
-            </article>
-
-            {/* Documents Card */}
-            <article className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    文件數量
-                  </p>
-                  <p className="mt-2 text-3xl font-bold text-foreground">
-                    {documentCount}
-                  </p>
-                </div>
-                <div
-                  className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center"
-                  aria-hidden="true"
-                >
-                  <span className="text-2xl">📄</span>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        {/* Recent Customers */}
-        <section aria-labelledby="recent-customers-heading">
-          <h3
-            id="recent-customers-heading"
-            className="text-lg font-semibold text-foreground mb-4"
-          >
-            最近新增的客戶
-          </h3>
-          {recentCustomers.length > 0 ? (
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      名稱
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      公司
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      狀態
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      建立日期
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {recentCustomers.map((customer) => (
-                    <tr key={customer.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
-                        {customer.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {customer.company || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            customerStatusStyles[customer.status] || customerStatusStyles.inactive
-                          }`}
-                        >
-                          {customerStatusLabels[customer.status] || customerStatusLabels.inactive}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(customer.createdAt).toLocaleDateString('zh-TW')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400">
-                尚無客戶資料，開始新增您的第一位客戶吧！
-              </p>
-            </div>
-          )}
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer role="contentinfo" className="mt-12 border-t border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-            Free CRM - ISO 27001 Compliant
-          </p>
-        </div>
-      </footer>
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={`stat-skeleton-${i}`} className="h-24 bg-background-tertiary border border-border rounded-xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-64 bg-background-tertiary border border-border rounded-xl" />
+        <div className="h-64 bg-background-tertiary border border-border rounded-xl" />
+      </div>
     </div>
   );
 }

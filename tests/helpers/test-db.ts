@@ -92,4 +92,4 @@ export async function teardownTestDatabase() {
 /**
  * Get Prisma client for direct database operations in tests
  */
-export { prisma };
+export { prisma } from '@/lib/prisma';

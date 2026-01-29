@@ -1,27 +1,33 @@
 /**
  * Free CRM Design System - Design Tokens
+ * Calm CRM Dark Theme
  *
- * TypeScript definitions for the design system.
  * These values should match the CSS variables in globals.css.
  */
 
 export const colors = {
-  // Primary - Slate (石墨)
-  primary: {
-    50: '#f8fafc',
-    100: '#f1f5f9',
-    200: '#e2e8f0',
-    300: '#cbd5e1',
-    400: '#94a3b8',
-    500: '#64748b',
-    600: '#475569', // Main
-    700: '#334155',
-    800: '#1e293b',
-    900: '#0f172a',
-    950: '#020617',
+  // Background
+  background: {
+    page: '#0d0d0d',
+    surface: '#111111',
+    card: '#1a1a1a',
+    hover: '#262626',
   },
 
-  // Accent - Blue (強調色)
+  // Borders
+  border: {
+    default: '#2a2a2a',
+    subtle: '#1f1f1f',
+  },
+
+  // Text
+  text: {
+    primary: '#fafafa',
+    secondary: '#a0a0a0',
+    muted: '#666666',
+  },
+
+  // Accent - Calm CRM Blue
   accent: {
     50: '#eff6ff',
     100: '#dbeafe',
@@ -29,31 +35,47 @@ export const colors = {
     300: '#93c5fd',
     400: '#60a5fa',
     500: '#3b82f6',
-    600: '#2563eb', // Main
-    700: '#1d4ed8',
-    800: '#1e40af',
-    900: '#1e3a8a',
+    600: '#0070f0', // Main
+    700: '#005cc4',
+    800: '#004999',
+    900: '#003875',
   },
 
   // Semantic Colors
-  success: '#10b981',
-  successLight: '#d1fae5',
-  warning: '#f59e0b',
-  warningLight: '#fef3c7',
+  success: '#22c55e',
+  successLight: 'rgba(34, 197, 94, 0.15)',
+  warning: '#eab308',
+  warningLight: 'rgba(234, 179, 8, 0.15)',
   error: '#ef4444',
-  errorLight: '#fee2e2',
-  info: '#3b82f6',
-  infoLight: '#dbeafe',
+  errorLight: 'rgba(239, 68, 68, 0.15)',
+  info: '#0070f0',
+  infoLight: 'rgba(0, 112, 240, 0.15)',
+} as const;
 
-  // Background
-  background: {
-    light: '#ffffff',
-    secondary: '#f8fafc',
-    tertiary: '#f1f5f9',
-    dark: '#0f172a',
-    darkSecondary: '#1e293b',
-    darkTertiary: '#334155',
-  },
+export const pipelineColors = {
+  lead: '#6366f1',
+  qualified: '#8b5cf6',
+  proposal: '#0070f0',
+  negotiation: '#eab308',
+  closed_won: '#22c55e',
+  closed_lost: '#ef4444',
+} as const;
+
+export const pipelineLabels: Record<string, string> = {
+  lead: '潛在客戶',
+  qualified: '已確認',
+  proposal: '提案中',
+  negotiation: '談判中',
+  closed_won: '成交',
+  closed_lost: '失敗',
+};
+
+export const statusColors = {
+  active: '#22c55e',
+  inactive: '#666666',
+  lead: '#eab308',
+  invited: '#0070f0',
+  suspended: '#ef4444',
 } as const;
 
 export const spacing = {
@@ -117,11 +139,13 @@ export const layout = {
 
 // Navigation items for the sidebar
 export const navItems = [
-  { key: 'dashboard', label: '儀表板', href: '/dashboard', icon: 'Home' },
+  { key: 'dashboard', label: '儀表板', href: '/dashboard', icon: 'LayoutDashboard' },
   { key: 'customers', label: '客戶', href: '/customers', icon: 'Users' },
-  { key: 'deals', label: '商機', href: '/deals', icon: 'Briefcase' },
+  { key: 'deals', label: '商機', href: '/deals', icon: 'Handshake' },
   { key: 'documents', label: '文件', href: '/documents', icon: 'FileText' },
+  { key: 'reports', label: '報表', href: '/reports', icon: 'BarChart3' },
   { key: 'settings', label: '設定', href: '/settings', icon: 'Settings' },
+  { key: 'admin', label: '管理', href: '/admin', icon: 'Shield' },
 ] as const;
 
 export type NavItem = (typeof navItems)[number];

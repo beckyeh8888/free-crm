@@ -1,50 +1,60 @@
 @import "tailwindcss";
 
+/* Exclude directories with UUIDs/hex content that cause Tailwind CSS code point errors */
+@source not "../../docs";
+@source not "../../scripts";
+@source not "../../.sonarlint";
+
 /* ============================================
-   Free CRM Design System - Slate Theme
+   Free CRM Design System - Calm CRM Dark Theme
    ============================================ */
 
 :root {
-  /* Background & Foreground */
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --background-secondary: #f8fafc;
-  --background-tertiary: #f1f5f9;
+  /* Background & Foreground (Dark-first) */
+  --background: #0d0d0d;
+  --foreground: #fafafa;
+  --background-secondary: #111111;
+  --background-tertiary: #1a1a1a;
+  --background-hover: #262626;
 
-  /* Primary - Slate (石墨) */
-  --primary-50: #f8fafc;
-  --primary-100: #f1f5f9;
-  --primary-200: #e2e8f0;
-  --primary-300: #cbd5e1;
-  --primary-400: #94a3b8;
-  --primary-500: #64748b;
-  --primary-600: #475569;
-  --primary-700: #334155;
-  --primary-800: #1e293b;
-  --primary-900: #0f172a;
-  --primary-950: #020617;
+  /* Borders */
+  --border: #2a2a2a;
+  --border-subtle: #1f1f1f;
 
-  /* Accent - Blue (強調色) */
+  /* Text */
+  --text-primary: #fafafa;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+
+  /* Accent - Calm CRM Blue */
   --accent-50: #eff6ff;
   --accent-100: #dbeafe;
   --accent-200: #bfdbfe;
   --accent-300: #93c5fd;
   --accent-400: #60a5fa;
   --accent-500: #3b82f6;
-  --accent-600: #2563eb;
-  --accent-700: #1d4ed8;
-  --accent-800: #1e40af;
-  --accent-900: #1e3a8a;
+  --accent-600: #0070f0;
+  --accent-700: #005cc4;
+  --accent-800: #004999;
+  --accent-900: #003875;
 
   /* Semantic Colors */
-  --success: #10b981;
-  --success-light: #d1fae5;
-  --warning: #f59e0b;
-  --warning-light: #fef3c7;
+  --success: #22c55e;
+  --success-light: rgba(34, 197, 94, 0.15);
+  --warning: #eab308;
+  --warning-light: rgba(234, 179, 8, 0.15);
   --error: #ef4444;
-  --error-light: #fee2e2;
-  --info: #3b82f6;
-  --info-light: #dbeafe;
+  --error-light: rgba(239, 68, 68, 0.15);
+  --info: #0070f0;
+  --info-light: rgba(0, 112, 240, 0.15);
+
+  /* Pipeline Stage Colors */
+  --pipeline-lead: #6366f1;
+  --pipeline-qualified: #8b5cf6;
+  --pipeline-proposal: #0070f0;
+  --pipeline-negotiation: #eab308;
+  --pipeline-won: #22c55e;
+  --pipeline-lost: #ef4444;
 
   /* Typography */
   --text-xs: 0.75rem;
@@ -72,65 +82,52 @@
   --sidebar-collapsed-width: 64px;
 }
 
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --background-secondary: #1e293b;
-    --background-tertiary: #334155;
-  }
-}
-
-/* Manual dark mode class support */
-.dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --background-secondary: #1e293b;
-  --background-tertiary: #334155;
-}
-
-/* Tailwind 4 Theme */
+/* Tailwind 4 Theme — static values for build-time resolution */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-background-secondary: var(--background-secondary);
-  --color-background-tertiary: var(--background-tertiary);
+  --color-background: #0d0d0d;
+  --color-foreground: #fafafa;
+  --color-background-secondary: #111111;
+  --color-background-tertiary: #1a1a1a;
+  --color-background-hover: #262626;
 
-  /* Primary Palette */
-  --color-primary-50: var(--primary-50);
-  --color-primary-100: var(--primary-100);
-  --color-primary-200: var(--primary-200);
-  --color-primary-300: var(--primary-300);
-  --color-primary-400: var(--primary-400);
-  --color-primary-500: var(--primary-500);
-  --color-primary-600: var(--primary-600);
-  --color-primary-700: var(--primary-700);
-  --color-primary-800: var(--primary-800);
-  --color-primary-900: var(--primary-900);
-  --color-primary-950: var(--primary-950);
+  /* Borders */
+  --color-border: #2a2a2a;
+  --color-border-subtle: #1f1f1f;
+
+  /* Text */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a0a0a0;
+  --color-text-muted: #666666;
 
   /* Accent Palette */
-  --color-accent-50: var(--accent-50);
-  --color-accent-100: var(--accent-100);
-  --color-accent-200: var(--accent-200);
-  --color-accent-300: var(--accent-300);
-  --color-accent-400: var(--accent-400);
-  --color-accent-500: var(--accent-500);
-  --color-accent-600: var(--accent-600);
-  --color-accent-700: var(--accent-700);
-  --color-accent-800: var(--accent-800);
-  --color-accent-900: var(--accent-900);
+  --color-accent-50: #eff6ff;
+  --color-accent-100: #dbeafe;
+  --color-accent-200: #bfdbfe;
+  --color-accent-300: #93c5fd;
+  --color-accent-400: #60a5fa;
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #0070f0;
+  --color-accent-700: #005cc4;
+  --color-accent-800: #004999;
+  --color-accent-900: #003875;
 
   /* Semantic Colors */
-  --color-success: var(--success);
-  --color-success-light: var(--success-light);
-  --color-warning: var(--warning);
-  --color-warning-light: var(--warning-light);
-  --color-error: var(--error);
-  --color-error-light: var(--error-light);
-  --color-info: var(--info);
-  --color-info-light: var(--info-light);
+  --color-success: #22c55e;
+  --color-success-light: rgba(34, 197, 94, 0.15);
+  --color-warning: #eab308;
+  --color-warning-light: rgba(234, 179, 8, 0.15);
+  --color-error: #ef4444;
+  --color-error-light: rgba(239, 68, 68, 0.15);
+  --color-info: #0070f0;
+  --color-info-light: rgba(0, 112, 240, 0.15);
+
+  /* Pipeline */
+  --color-pipeline-lead: #6366f1;
+  --color-pipeline-qualified: #8b5cf6;
+  --color-pipeline-proposal: #0070f0;
+  --color-pipeline-negotiation: #eab308;
+  --color-pipeline-won: #22c55e;
+  --color-pipeline-lost: #ef4444;
 
   /* Fonts */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -166,7 +163,7 @@ body {
   position: absolute;
   top: -40px;
   left: 0;
-  background: #0055cc;
+  background: var(--accent-600);
   color: white;
   padding: 8px 16px;
   z-index: 100;
@@ -179,7 +176,7 @@ body {
 
 /* Focus visible styles - WCAG 2.4.7 */
 *:focus-visible {
-  outline: 3px solid #0055cc;
+  outline: 3px solid var(--accent-600);
   outline-offset: 2px;
 }
 
@@ -203,4 +200,36 @@ textarea {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ============================================
+   Form Components
+   ============================================ */
+
+.form-input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background-color: var(--background-secondary);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  min-height: 44px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-600);
+  box-shadow: 0 0 0 3px rgba(0, 112, 240, 0.2);
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

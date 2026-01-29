@@ -9,9 +9,6 @@ import security from "eslint-plugin-security";
 
 const eslintConfig = defineConfig([...nextVitals, ...nextTs, // WCAG 2.2 AAA - Accessibility rules
 {
-  plugins: {
-    "jsx-a11y": jsxA11y,
-  },
   rules: {
     ...jsxA11y.configs.strict.rules,
   },

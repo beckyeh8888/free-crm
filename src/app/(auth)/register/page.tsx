@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Register Page - WCAG 2.2 AAA Compliant
+ * Register Page - Calm CRM Dark Theme
+ * WCAG 2.2 AAA Compliant
  */
 
 import { useState } from 'react';
@@ -20,7 +21,6 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
 
   const performRegister = async () => {
-    // Client-side validation
     if (password !== confirmPassword) {
       setError('密碼不一致');
       return;
@@ -53,12 +53,6 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    void performRegister();
-  };
-
   if (success) {
     return (
       <main
@@ -67,18 +61,17 @@ export default function RegisterPage() {
         className="min-h-screen flex items-center justify-center px-4 py-12 bg-background"
       >
         <div className="w-full max-w-md text-center">
-          <div
-            role="status"
+          <output
             aria-live="polite"
-            className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-8"
+            className="block bg-success/10 border border-success/30 rounded-xl p-8"
           >
-            <h1 className="text-xl font-bold text-green-700 dark:text-green-400 mb-2">
+            <h1 className="text-xl font-bold text-success mb-2">
               註冊成功！
             </h1>
-            <p className="text-green-600 dark:text-green-500">
+            <p className="text-success/80">
               正在導向登入頁面...
             </p>
-          </div>
+          </output>
         </div>
       </main>
     );
@@ -91,12 +84,12 @@ export default function RegisterPage() {
       className="min-h-screen flex items-center justify-center px-4 py-12 bg-background"
     >
       <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8">
+        <div className="bg-background-tertiary border border-border rounded-xl shadow-xl p-8">
           <header className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-text-primary">
               建立帳號
             </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-text-secondary">
               開始使用 Free CRM
             </p>
           </header>
@@ -106,20 +99,27 @@ export default function RegisterPage() {
             <div
               role="alert"
               aria-live="polite"
-              className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+              className="mb-6 p-4 bg-error/10 border border-error/30 rounded-lg"
             >
-              <p className="text-red-700 dark:text-red-400 text-sm">
+              <p className="text-error text-sm">
                 {error}
               </p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} noValidate>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setError(null);
+              void performRegister();
+            }}
+            noValidate
+          >
             {/* Name Field */}
             <div className="mb-5">
               <label
                 htmlFor="name"
-                className="block text-sm font-medium text-foreground mb-2"
+                className="block text-sm font-medium text-text-primary mb-2"
               >
                 姓名
               </label>
@@ -132,10 +132,7 @@ export default function RegisterPage() {
                 required
                 autoComplete="name"
                 aria-required="true"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg
-                         bg-white dark:bg-gray-800 text-foreground
-                         focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         transition-colors"
+                className="form-input"
                 placeholder="您的姓名"
               />
             </div>
@@ -144,7 +141,7 @@ export default function RegisterPage() {
             <div className="mb-5">
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-foreground mb-2"
+                className="block text-sm font-medium text-text-primary mb-2"
               >
                 電子郵件
               </label>
@@ -157,10 +154,7 @@ export default function RegisterPage() {
                 required
                 autoComplete="email"
                 aria-required="true"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg
-                         bg-white dark:bg-gray-800 text-foreground
-                         focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         transition-colors"
+                className="form-input"
                 placeholder="your@email.com"
               />
             </div>
@@ -169,7 +163,7 @@ export default function RegisterPage() {
             <div className="mb-5">
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-foreground mb-2"
+                className="block text-sm font-medium text-text-primary mb-2"
               >
                 密碼
               </label>
@@ -183,15 +177,12 @@ export default function RegisterPage() {
                 autoComplete="new-password"
                 aria-required="true"
                 aria-describedby="password-hint"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg
-                         bg-white dark:bg-gray-800 text-foreground
-                         focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         transition-colors"
+                className="form-input"
                 placeholder="••••••••"
               />
               <p
                 id="password-hint"
-                className="mt-2 text-xs text-gray-500 dark:text-gray-400"
+                className="mt-2 text-xs text-text-muted"
               >
                 至少 8 字元，包含大小寫字母、數字及特殊字元
               </p>
@@ -201,7 +192,7 @@ export default function RegisterPage() {
             <div className="mb-6">
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-foreground mb-2"
+                className="block text-sm font-medium text-text-primary mb-2"
               >
                 確認密碼
               </label>
@@ -214,10 +205,7 @@ export default function RegisterPage() {
                 required
                 autoComplete="new-password"
                 aria-required="true"
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg
-                         bg-white dark:bg-gray-800 text-foreground
-                         focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         transition-colors"
+                className="form-input"
                 placeholder="••••••••"
               />
             </div>
@@ -227,22 +215,21 @@ export default function RegisterPage() {
               type="submit"
               disabled={isLoading}
               aria-busy={isLoading}
-              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700
-                       disabled:bg-blue-400 disabled:cursor-not-allowed
+              className="w-full py-3 px-4 bg-accent-600 hover:bg-accent-700
+                       disabled:opacity-50 disabled:cursor-not-allowed
                        text-white font-medium rounded-lg
-                       focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                       transition-colors"
+                       transition-colors min-h-[44px]"
             >
               {isLoading ? '註冊中...' : '建立帳號'}
             </button>
           </form>
 
           {/* Login Link */}
-          <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-6 text-center text-sm text-text-secondary">
             已有帳號？{' '}
             <Link
               href="/login"
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400
+              className="text-accent-600 hover:text-accent-500
                        font-medium underline underline-offset-2"
             >
               立即登入
