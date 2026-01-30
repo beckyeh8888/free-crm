@@ -30,12 +30,20 @@ vi.mock('next-auth/react', () => ({
 }));
 
 // Import after mocks
+import { forwardRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { SidebarProvider, useSidebar } from '@/components/layout/Sidebar/SidebarContext';
 import { SidebarItem } from '@/components/layout/Sidebar/SidebarItem';
 import { Sidebar } from '@/components/layout/Sidebar/Sidebar';
 import { Header } from '@/components/layout/Header/Header';
+import type { LucideProps } from 'lucide-react';
+
+// Mock LucideIcon component for SidebarItem tests
+const MockIcon = forwardRef<SVGSVGElement, LucideProps>((props, ref) => (
+  <svg ref={ref} data-testid="icon" {...props}><path d="M0 0" /></svg>
+)) as unknown as import('lucide-react').LucideIcon;
+MockIcon.displayName = 'MockIcon';
 
 // Mock localStorage with proper reset functionality
 let localStorageStore: Record<string, string> = {};
@@ -207,7 +215,7 @@ describe('SidebarItem', () => {
           <SidebarItem
             href="/dashboard"
             label="儀表板"
-            icon={<span data-testid="icon">Icon</span>}
+            icon={MockIcon}
           />
         </TestWrapper>
       );
@@ -222,7 +230,7 @@ describe('SidebarItem', () => {
           <SidebarItem
             href="/customers"
             label="客戶"
-            icon={<span>Icon</span>}
+            icon={MockIcon}
           />
         </TestWrapper>
       );
@@ -241,7 +249,7 @@ describe('SidebarItem', () => {
           <SidebarItem
             href="/dashboard"
             label="儀表板"
-            icon={<span>Icon</span>}
+            icon={MockIcon}
           />
         </TestWrapper>
       );
@@ -258,7 +266,7 @@ describe('SidebarItem', () => {
           <SidebarItem
             href="/customers"
             label="客戶"
-            icon={<span>Icon</span>}
+            icon={MockIcon}
           />
         </TestWrapper>
       );
@@ -275,7 +283,7 @@ describe('SidebarItem', () => {
           <SidebarItem
             href="/customers"
             label="客戶"
-            icon={<span>Icon</span>}
+            icon={MockIcon}
           />
         </TestWrapper>
       );
@@ -292,7 +300,7 @@ describe('SidebarItem', () => {
           <SidebarItem
             href="/dashboard"
             label="儀表板"
-            icon={<span>Icon</span>}
+            icon={MockIcon}
           />
         </TestWrapper>
       );
@@ -307,7 +315,7 @@ describe('SidebarItem', () => {
           <SidebarItem
             href="/dashboard"
             label="儀表板"
-            icon={<span>Icon</span>}
+            icon={MockIcon}
           />
         </TestWrapper>
       );
@@ -322,13 +330,13 @@ describe('SidebarItem', () => {
           <SidebarItem
             href="/dashboard"
             label="儀表板"
-            icon={<span>Icon</span>}
+            icon={MockIcon}
           />
         </TestWrapper>
       );
 
-      const iconContainer = screen.getByText('Icon').parentElement;
-      expect(iconContainer).toHaveAttribute('aria-hidden', 'true');
+      const iconEl = screen.getByTestId('icon');
+      expect(iconEl.parentElement).toHaveAttribute('aria-hidden', 'true');
     });
   });
 });
@@ -618,7 +626,7 @@ describe('Header', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByRole('button', { name: '搜尋' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /搜尋/ })).toBeInTheDocument();
     });
 
     it('renders notifications button', () => {
@@ -696,7 +704,7 @@ describe('Header', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByRole('button', { name: '搜尋' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /搜尋/ })).toBeInTheDocument();
     });
 
     it('notifications button has accessible name', () => {

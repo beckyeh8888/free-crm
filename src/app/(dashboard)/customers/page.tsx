@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { Plus, Search } from 'lucide-react';
-import { useCustomers, useCreateCustomer, useDeleteCustomer } from '@/hooks/useCustomers';
+import { useCustomers, useCreateCustomer, type Customer } from '@/hooks/useCustomers';
 import { CustomerRow } from '@/components/features/customers/CustomerRow';
 import { CustomerForm, type CustomerFormData } from '@/components/features/customers/CustomerForm';
 
@@ -32,7 +32,6 @@ export default function CustomersPage() {
   });
 
   const createMutation = useCreateCustomer();
-  const deleteMutation = useDeleteCustomer();
 
   const customers = data?.data ?? [];
   const pagination = data?.pagination;
@@ -101,34 +100,12 @@ export default function CustomersPage() {
 
       {/* Customer List */}
       <div className="bg-background-tertiary border border-border rounded-xl overflow-hidden">
-        {isLoading ? (
-          <div className="space-y-0 divide-y divide-border-subtle">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={`skeleton-${i}`} className="h-14 animate-pulse bg-background-hover/30" />
-            ))}
-          </div>
-        ) : customers.length > 0 ? (
-          <div className="divide-y divide-border-subtle">
-            {customers.map((customer) => (
-              <CustomerRow key={customer.id} customer={customer} />
-            ))}
-          </div>
-        ) : (
-          <div className="py-12 text-center">
-            <p className="text-text-muted">
-              {search ? '找不到符合的客戶' : '尚無客戶資料'}
-            </p>
-            {!search && (
-              <button
-                type="button"
-                onClick={() => setShowForm(true)}
-                className="mt-3 text-sm text-accent-600 hover:text-accent-500 transition-colors min-h-[44px]"
-              >
-                新增第一位客戶
-              </button>
-            )}
-          </div>
-        )}
+        <CustomerListContent
+          isLoading={isLoading}
+          customers={customers}
+          search={search}
+          onShowForm={() => setShowForm(true)}
+        />
       </div>
 
       {/* Pagination */}
@@ -169,6 +146,54 @@ export default function CustomersPage() {
           isSubmitting={createMutation.isPending}
         />
       )}
+    </div>
+  );
+}
+
+const SKELETON_KEYS = ['sk-1', 'sk-2', 'sk-3', 'sk-4', 'sk-5'] as const;
+
+interface CustomerListContentProps {
+  readonly isLoading: boolean;
+  readonly customers: readonly Customer[];
+  readonly search: string;
+  readonly onShowForm: () => void;
+}
+
+function CustomerListContent({ isLoading, customers, search, onShowForm }: CustomerListContentProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-0 divide-y divide-border-subtle">
+        {SKELETON_KEYS.map((key) => (
+          <div key={key} className="h-14 animate-pulse bg-background-hover/30" />
+        ))}
+      </div>
+    );
+  }
+
+  if (customers.length === 0) {
+    return (
+      <div className="py-12 text-center">
+        <p className="text-text-muted">
+          {search ? '找不到符合的客戶' : '尚無客戶資料'}
+        </p>
+        {!search && (
+          <button
+            type="button"
+            onClick={onShowForm}
+            className="mt-3 text-sm text-accent-600 hover:text-accent-500 transition-colors min-h-[44px]"
+          >
+            新增第一位客戶
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-border-subtle">
+      {customers.map((customer) => (
+        <CustomerRow key={customer.id} customer={customer} />
+      ))}
     </div>
   );
 }

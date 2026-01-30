@@ -76,12 +76,14 @@ export default function DashboardPage() {
   );
 }
 
+const STAT_SKELETON_KEYS = ['stat-1', 'stat-2', 'stat-3', 'stat-4'] as const;
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={`stat-skeleton-${i}`} className="h-24 bg-background-tertiary border border-border rounded-xl" />
+        {STAT_SKELETON_KEYS.map((key) => (
+          <div key={key} className="h-24 bg-background-tertiary border border-border rounded-xl" />
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

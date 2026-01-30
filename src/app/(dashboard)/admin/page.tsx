@@ -101,6 +101,10 @@ export default function AdminPage() {
   );
 }
 
+const USER_SKELETON_KEYS = ['u-1', 'u-2', 'u-3', 'u-4', 'u-5'] as const;
+const ROLE_SKELETON_KEYS = ['r-1', 'r-2', 'r-3', 'r-4'] as const;
+const AUDIT_SKELETON_KEYS = ['a-1', 'a-2', 'a-3', 'a-4', 'a-5', 'a-6', 'a-7', 'a-8'] as const;
+
 function UsersTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users'],
@@ -112,8 +116,8 @@ function UsersTab() {
   if (isLoading) {
     return (
       <div className="bg-background-tertiary border border-border rounded-xl">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={`user-skeleton-${i}`} className="h-14 animate-pulse border-b border-border-subtle last:border-0" />
+        {USER_SKELETON_KEYS.map((key) => (
+          <div key={key} className="h-14 animate-pulse border-b border-border-subtle last:border-0" />
         ))}
       </div>
     );
@@ -177,8 +181,8 @@ function RolesTab() {
   if (isLoading) {
     return (
       <div className="bg-background-tertiary border border-border rounded-xl">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={`role-skeleton-${i}`} className="h-14 animate-pulse border-b border-border-subtle last:border-0" />
+        {ROLE_SKELETON_KEYS.map((key) => (
+          <div key={key} className="h-14 animate-pulse border-b border-border-subtle last:border-0" />
         ))}
       </div>
     );
@@ -227,8 +231,8 @@ function AuditTab() {
   if (isLoading) {
     return (
       <div className="bg-background-tertiary border border-border rounded-xl">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={`audit-skeleton-${i}`} className="h-12 animate-pulse border-b border-border-subtle last:border-0" />
+        {AUDIT_SKELETON_KEYS.map((key) => (
+          <div key={key} className="h-12 animate-pulse border-b border-border-subtle last:border-0" />
         ))}
       </div>
     );

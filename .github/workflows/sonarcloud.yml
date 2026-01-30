@@ -60,10 +60,22 @@ jobs:
         run: npm run test:coverage
         env:
           CI: true
+          DATABASE_URL: "file:./test.db"
         continue-on-error: true  # 允許測試失敗但繼續 SonarCloud 分析
+
+      - name: Verify coverage output
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            echo "LCOV file found ($(wc -l < coverage/lcov.info) lines)"
+          else
+            echo "WARNING: coverage/lcov.info not found"
+            ls -la coverage/ 2>/dev/null || echo "coverage/ directory does not exist"
+          fi
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
+        with:
+          projectBaseDir: .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
