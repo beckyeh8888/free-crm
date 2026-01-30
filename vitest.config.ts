@@ -19,7 +19,7 @@ export default defineConfig({
     include: ['**/tests/**/*.test.ts', '**/tests/**/*.test.tsx'],
     exclude: ['node_modules', '.next'],
     environment: 'node',
-    setupFiles: ['tests/setup.ts'],
+    setupFiles: ['tests/setup.ts', 'tests/setup-react.ts'],
     // SQLite doesn't support concurrent writes - run tests sequentially
     fileParallelism: false,
     // Increase timeout for database operations

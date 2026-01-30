@@ -9,6 +9,7 @@ export * from './organization.factory';
 export * from './customer.factory';
 export * from './contact.factory';
 export * from './deal.factory';
+export * from './document.factory';
 
 // Re-export reset functions for easy cleanup
 import { resetUserFactory } from './user.factory';
@@ -16,6 +17,7 @@ import { resetOrganizationFactory } from './organization.factory';
 import { resetCustomerFactory } from './customer.factory';
 import { resetContactFactory } from './contact.factory';
 import { resetDealFactory } from './deal.factory';
+import { resetDocumentFactory } from './document.factory';
 
 /**
  * Reset all factory counters
@@ -27,4 +29,5 @@ export function resetAllFactories() {
   resetCustomerFactory();
   resetContactFactory();
   resetDealFactory();
+  resetDocumentFactory();
 }

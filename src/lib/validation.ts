@@ -170,3 +170,38 @@ export const dealFilterSchema = z.object({
 export type CreateDeal = z.infer<typeof createDealSchema>;
 export type UpdateDeal = z.infer<typeof updateDealSchema>;
 export type DealStage = z.infer<typeof dealStageEnum>;
+
+// ============================================
+// Document CRUD Schemas
+// ============================================
+
+export const documentTypeEnum = z.enum([
+  'contract',
+  'email',
+  'meeting_notes',
+  'quotation',
+]);
+
+export const createDocumentSchema = z.object({
+  name: z.string().min(1, '請輸入文件名稱').max(200),
+  type: documentTypeEnum.default('contract'),
+  content: z.string().max(50000).optional(),
+  customerId: z.string().cuid('無效的客戶 ID').optional().nullable(),
+});
+
+export const updateDocumentSchema = z.object({
+  name: z.string().min(1, '請輸入文件名稱').max(200).optional(),
+  type: documentTypeEnum.optional(),
+  content: z.string().max(50000).optional(),
+  customerId: z.string().cuid('無效的客戶 ID').optional().nullable(),
+});
+
+export const documentFilterSchema = z.object({
+  search: z.string().optional(),
+  type: documentTypeEnum.optional(),
+  customerId: z.string().cuid().optional(),
+});
+
+export type CreateDocument = z.infer<typeof createDocumentSchema>;
+export type UpdateDocument = z.infer<typeof updateDocumentSchema>;
+export type DocumentType = z.infer<typeof documentTypeEnum>;
