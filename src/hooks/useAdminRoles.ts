@@ -14,6 +14,7 @@ export interface Permission {
   readonly code: string;
   readonly name: string;
   readonly category: string;
+  readonly description: string;
   readonly id?: string;
 }
 

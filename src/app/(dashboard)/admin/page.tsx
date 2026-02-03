@@ -9,11 +9,11 @@
 import { useState } from 'react';
 import { Plus, Search, Shield, MoreVertical, Edit2, Trash2, UserX, UserCheck } from 'lucide-react';
 import { useAdminUsers, useDeleteUser, useSuspendUser, useActivateUser, type AdminUser } from '@/hooks/useAdminUsers';
-import { useAdminRoles } from '@/hooks/useAdminRoles';
+import { useAdminRoles, useDeleteRole, type AdminRole } from '@/hooks/useAdminRoles';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/services/api';
 import { statusColors } from '@/lib/design-tokens';
-import { InviteUserModal, EditUserModal, ConfirmDialog } from '@/components/features/admin';
+import { InviteUserModal, EditUserModal, ConfirmDialog, CreateRoleModal, EditRoleModal } from '@/components/features/admin';
 
 type TabKey = 'users' | 'roles' | 'audit';
 
@@ -315,12 +315,28 @@ function UsersTab({ search }: { readonly search: string }) {
 }
 
 function RolesTab({ search }: { readonly search: string }) {
-  const { data, isLoading } = useAdminRoles({ includePermissions: true });
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingRole, setEditingRole] = useState<AdminRole | null>(null);
+  const [deletingRole, setDeletingRole] = useState<AdminRole | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const { data, isLoading, refetch } = useAdminRoles({ includePermissions: true });
+  const deleteMutation = useDeleteRole();
 
   const allRoles = data?.data ?? [];
   const roles = search
     ? allRoles.filter((r) => r.name.toLowerCase().includes(search.toLowerCase()))
     : allRoles;
+
+  const handleDelete = async () => {
+    if (!deletingRole) return;
+    try {
+      await deleteMutation.mutateAsync(deletingRole.id);
+      setDeletingRole(null);
+    } catch {
+      // Error handled by mutation
+    }
+  };
 
   if (isLoading) {
     return (
@@ -333,39 +349,136 @@ function RolesTab({ search }: { readonly search: string }) {
   }
 
   return (
-    <div className="bg-background-tertiary border border-border rounded-xl">
-      <div className="divide-y divide-border-subtle">
-        {roles.map((role) => (
-          <div key={role.id} className="flex items-center gap-3 px-4 py-3 min-h-[56px]">
-            <div className="w-8 h-8 rounded-lg bg-background-secondary flex items-center justify-center flex-shrink-0">
-              <Shield className="w-4 h-4 text-text-secondary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text-primary">{role.name}</p>
-              <p className="text-xs text-text-muted">{role.description || '-'}</p>
-            </div>
-            <span className="px-2 py-0.5 rounded text-xs border border-border text-text-muted">
-              {role.memberCount} 成員
-            </span>
-            {role.permissionCount !== undefined && (
-              <span className="px-2 py-0.5 rounded text-xs border border-border text-text-muted">
-                {role.permissionCount} 權限
-              </span>
-            )}
-            {role.isSystem && (
-              <span className="px-2 py-0.5 rounded text-xs bg-accent-600/15 text-accent-600">
-                系統
-              </span>
-            )}
-            {role.isDefault && (
-              <span className="px-2 py-0.5 rounded text-xs bg-success/15 text-success">
-                預設
-              </span>
-            )}
-          </div>
-        ))}
+    <>
+      {/* Header with Create button */}
+      <div className="flex justify-end mb-4">
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent-600 text-white hover:bg-accent-700 transition-colors min-h-[44px]"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">新增角色</span>
+        </button>
       </div>
-    </div>
+
+      {/* Role List */}
+      <div className="bg-background-tertiary border border-border rounded-xl">
+        {roles.length > 0 ? (
+          <div className="divide-y divide-border-subtle">
+            {roles.map((role) => (
+              <div key={role.id} className="flex items-center gap-3 px-4 py-3 min-h-[56px]">
+                <div className="w-8 h-8 rounded-lg bg-background-secondary flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-text-primary">{role.name}</p>
+                  <p className="text-xs text-text-muted">{role.description || '-'}</p>
+                </div>
+                <span className="px-2 py-0.5 rounded text-xs border border-border text-text-muted">
+                  {role.memberCount} 成員
+                </span>
+                {role.permissionCount !== undefined && (
+                  <span className="px-2 py-0.5 rounded text-xs border border-border text-text-muted">
+                    {role.permissionCount} 權限
+                  </span>
+                )}
+                {role.isSystem && (
+                  <span className="px-2 py-0.5 rounded text-xs bg-accent-600/15 text-accent-600">
+                    系統
+                  </span>
+                )}
+                {role.isDefault && (
+                  <span className="px-2 py-0.5 rounded text-xs bg-success/15 text-success">
+                    預設
+                  </span>
+                )}
+
+                {/* Actions Menu */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMenuId(openMenuId === role.id ? null : role.id)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-background-hover transition-colors"
+                    aria-label="操作選單"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {openMenuId === role.id && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setOpenMenuId(null)}
+                        aria-hidden="true"
+                      />
+                      <div className="absolute right-0 top-full mt-1 w-40 bg-background-tertiary border border-border rounded-lg shadow-lg z-20 py-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingRole(role);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-background-hover hover:text-text-primary transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          編輯權限
+                        </button>
+                        {!role.isSystem && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeletingRole(role);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-error hover:bg-background-hover transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            刪除
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-12 text-center">
+            <p className="text-sm text-text-muted">尚無角色</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      {showCreateModal && (
+        <CreateRoleModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => refetch()}
+        />
+      )}
+
+      {editingRole && (
+        <EditRoleModal
+          role={editingRole}
+          onClose={() => setEditingRole(null)}
+          onSuccess={() => refetch()}
+        />
+      )}
+
+      {deletingRole && (
+        <ConfirmDialog
+          title="刪除角色"
+          message={`確定要刪除「${deletingRole.name}」角色嗎？此操作無法復原。該角色下的成員將需要重新分配角色。`}
+          confirmLabel="刪除"
+          variant="danger"
+          isLoading={deleteMutation.isPending}
+          onConfirm={handleDelete}
+          onCancel={() => setDeletingRole(null)}
+        />
+      )}
+    </>
   );
 }
 
