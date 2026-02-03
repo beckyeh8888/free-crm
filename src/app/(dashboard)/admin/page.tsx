@@ -7,20 +7,22 @@
  */
 
 import { useState } from 'react';
-import { Plus, Search, Shield, MoreVertical, Edit2, Trash2, UserX, UserCheck } from 'lucide-react';
+import { Plus, Search, Shield, MoreVertical, Edit2, Trash2, UserX, UserCheck, Building2, Loader2, Users, FileText, Briefcase } from 'lucide-react';
 import { useAdminUsers, useDeleteUser, useSuspendUser, useActivateUser, type AdminUser } from '@/hooks/useAdminUsers';
 import { useAdminRoles, useDeleteRole, type AdminRole } from '@/hooks/useAdminRoles';
+import { useOrganization, useOrganizationStats, useUpdateOrganization } from '@/hooks/useOrganization';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/services/api';
 import { statusColors } from '@/lib/design-tokens';
 import { InviteUserModal, EditUserModal, ConfirmDialog, CreateRoleModal, EditRoleModal } from '@/components/features/admin';
 
-type TabKey = 'users' | 'roles' | 'audit';
+type TabKey = 'users' | 'roles' | 'audit' | 'organization';
 
 const tabs: readonly { readonly key: TabKey; readonly label: string }[] = [
   { key: 'users', label: '使用者' },
   { key: 'roles', label: '角色' },
   { key: 'audit', label: '審計日誌' },
+  { key: 'organization', label: '組織' },
 ];
 
 interface AuditEntry {
@@ -65,7 +67,7 @@ export default function AdminPage() {
       </div>
 
       {/* Search */}
-      {activeTab !== 'audit' && (
+      {(activeTab === 'users' || activeTab === 'roles') && (
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <input
@@ -82,6 +84,7 @@ export default function AdminPage() {
       {activeTab === 'users' && <UsersTab search={search} />}
       {activeTab === 'roles' && <RolesTab search={search} />}
       {activeTab === 'audit' && <AuditTab />}
+      {activeTab === 'organization' && <OrganizationTab />}
     </div>
   );
 }
@@ -548,6 +551,247 @@ function AuditTab() {
             <p className="text-sm text-text-muted">尚無審計記錄</p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+const ORG_SKELETON_KEYS = ['o-1', 'o-2', 'o-3'] as const;
+
+function OrganizationTab() {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+
+  const { data: orgData, isLoading: orgLoading } = useOrganization();
+  const { data: statsData, isLoading: statsLoading } = useOrganizationStats();
+  const updateMutation = useUpdateOrganization();
+
+  const organization = orgData?.data;
+  const stats = statsData?.data;
+
+  const handleEdit = () => {
+    if (organization) {
+      setEditName(organization.name);
+      setIsEditing(true);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!editName.trim()) return;
+    try {
+      await updateMutation.mutateAsync({ name: editName.trim() });
+      setIsEditing(false);
+    } catch {
+      // Error handled by mutation
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditName('');
+  };
+
+  if (orgLoading || statsLoading) {
+    return (
+      <div className="space-y-4">
+        {ORG_SKELETON_KEYS.map((key) => (
+          <div key={key} className="h-32 bg-background-tertiary border border-border rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  const planLabels: Record<string, { name: string; color: string }> = {
+    free: { name: 'Free', color: 'text-text-muted' },
+    pro: { name: 'Pro', color: 'text-accent-600' },
+    enterprise: { name: 'Enterprise', color: 'text-success' },
+  };
+
+  const plan = planLabels[organization?.plan || 'free'] || planLabels.free;
+
+  return (
+    <div className="space-y-4">
+      {/* Organization Info */}
+      <div className="bg-background-tertiary border border-border rounded-xl p-5">
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-sm font-semibold text-text-primary">組織資訊</h3>
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={handleEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border border-border text-text-secondary hover:bg-background-hover transition-colors"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              編輯
+            </button>
+          )}
+        </div>
+
+        {isEditing ? (
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="org-name" className="block text-sm text-text-secondary mb-1.5">
+                組織名稱
+              </label>
+              <input
+                id="org-name"
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="form-input w-full max-w-md"
+                maxLength={100}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={updateMutation.isPending || !editName.trim()}
+                className="px-4 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700 transition-colors min-h-[40px] disabled:opacity-50 flex items-center gap-2"
+              >
+                {updateMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                儲存
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={updateMutation.isPending}
+                className="px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-background-hover transition-colors min-h-[40px]"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-accent-600 flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-lg font-medium text-text-primary">{organization?.name}</p>
+                <p className="text-sm text-text-muted">@{organization?.slug}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-6 pt-2">
+              <div>
+                <p className="text-xs text-text-muted">方案</p>
+                <p className={`text-sm font-medium ${plan.color}`}>{plan.name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">建立日期</p>
+                <p className="text-sm text-text-primary">
+                  {organization?.createdAt ? new Date(organization.createdAt).toLocaleDateString('zh-TW') : '-'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Usage Stats */}
+      <div className="bg-background-tertiary border border-border rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-text-primary mb-4">用量統計</h3>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Members */}
+          <div className="bg-background-secondary rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4 text-text-muted" />
+              <span className="text-xs text-text-muted">成員</span>
+            </div>
+            <p className="text-2xl font-semibold text-text-primary">{stats?.counts.members || 0}</p>
+            {stats?.limits.members !== -1 && (
+              <div className="mt-2">
+                <div className="h-1.5 bg-background-tertiary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent-600 rounded-full"
+                    style={{ width: `${Math.min(stats?.usage.membersUsage || 0, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-text-muted mt-1">
+                  {stats?.counts.members}/{stats?.limits.members}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Customers */}
+          <div className="bg-background-secondary rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Building2 className="w-4 h-4 text-text-muted" />
+              <span className="text-xs text-text-muted">客戶</span>
+            </div>
+            <p className="text-2xl font-semibold text-text-primary">{stats?.counts.customers || 0}</p>
+            {stats?.limits.customers !== -1 && (
+              <div className="mt-2">
+                <div className="h-1.5 bg-background-tertiary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent-600 rounded-full"
+                    style={{ width: `${Math.min(stats?.usage.customersUsage || 0, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-text-muted mt-1">
+                  {stats?.counts.customers}/{stats?.limits.customers}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Deals */}
+          <div className="bg-background-secondary rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Briefcase className="w-4 h-4 text-text-muted" />
+              <span className="text-xs text-text-muted">商機</span>
+            </div>
+            <p className="text-2xl font-semibold text-text-primary">{stats?.counts.deals || 0}</p>
+            <div className="flex gap-2 mt-2 text-xs text-text-muted">
+              <span className="text-success">{stats?.dealBreakdown.won || 0} 成交</span>
+              <span>{stats?.dealBreakdown.open || 0} 進行中</span>
+            </div>
+          </div>
+
+          {/* Documents */}
+          <div className="bg-background-secondary rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-4 h-4 text-text-muted" />
+              <span className="text-xs text-text-muted">文件</span>
+            </div>
+            <p className="text-2xl font-semibold text-text-primary">{stats?.counts.documents || 0}</p>
+            {stats?.limits.documents !== -1 && (
+              <div className="mt-2">
+                <div className="h-1.5 bg-background-tertiary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent-600 rounded-full"
+                    style={{ width: `${Math.min(stats?.usage.documentsUsage || 0, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-text-muted mt-1">
+                  {stats?.counts.documents}/{stats?.limits.documents}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Member Breakdown */}
+      <div className="bg-background-tertiary border border-border rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-text-primary mb-4">成員狀態</h3>
+        <div className="flex gap-6">
+          <div>
+            <p className="text-2xl font-semibold text-success">{stats?.memberBreakdown.active || 0}</p>
+            <p className="text-xs text-text-muted">啟用中</p>
+          </div>
+          <div>
+            <p className="text-2xl font-semibold text-warning">{stats?.memberBreakdown.suspended || 0}</p>
+            <p className="text-xs text-text-muted">已停用</p>
+          </div>
+          <div>
+            <p className="text-2xl font-semibold text-text-secondary">{stats?.memberBreakdown.invited || 0}</p>
+            <p className="text-xs text-text-muted">待邀請</p>
+          </div>
+        </div>
       </div>
     </div>
   );
