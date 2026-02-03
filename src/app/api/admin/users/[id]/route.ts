@@ -228,66 +228,64 @@ async function getMemberWithDetails(
   });
 
   // If not found by member ID, try user ID
-  if (!member) {
-    member = await prisma.organizationMember.findFirst({
-      where: {
-        userId: memberId,
-        organizationId,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            status: true,
-            lastLoginAt: true,
-            createdAt: true,
-            emailVerified: true,
-            twoFactorAuth: {
-              select: {
-                enabled: true,
-                verifiedAt: true,
-              },
+  member ??= await prisma.organizationMember.findFirst({
+    where: {
+      userId: memberId,
+      organizationId,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          status: true,
+          lastLoginAt: true,
+          createdAt: true,
+          emailVerified: true,
+          twoFactorAuth: {
+            select: {
+              enabled: true,
+              verifiedAt: true,
             },
-            loginHistory: {
-              take: 5,
-              orderBy: { createdAt: 'desc' },
-              select: {
-                id: true,
-                ip: true,
-                device: true,
-                browser: true,
-                location: true,
-                status: true,
-                createdAt: true,
-              },
+          },
+          loginHistory: {
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+            select: {
+              id: true,
+              ip: true,
+              device: true,
+              browser: true,
+              location: true,
+              status: true,
+              createdAt: true,
             },
           },
         },
-        role: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            isSystem: true,
-            permissions: {
-              include: {
-                permission: {
-                  select: {
-                    code: true,
-                    name: true,
-                    category: true,
-                  },
+      },
+      role: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isSystem: true,
+          permissions: {
+            include: {
+              permission: {
+                select: {
+                  code: true,
+                  name: true,
+                  category: true,
                 },
               },
             },
           },
         },
       },
-    });
-  }
+    },
+  });
 
   return member;
 }

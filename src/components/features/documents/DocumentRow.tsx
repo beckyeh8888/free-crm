@@ -69,9 +69,9 @@ export function DocumentRow({ document, isSelected, onClick }: DocumentRowProps)
       </div>
       <span
         className={`w-2 h-2 rounded-full flex-shrink-0 ${hasAnalysis ? 'bg-success' : 'bg-text-muted'}`}
-        aria-label={hasAnalysis ? 'AI 已分析' : '未分析'}
-        role="img"
+        aria-hidden="true"
       />
+      <span className="sr-only">{hasAnalysis ? 'AI 已分析' : '未分析'}</span>
     </button>
   );
 }

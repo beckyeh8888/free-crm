@@ -32,11 +32,12 @@ type UpdateDealData = z.infer<typeof updateDealSchema>;
 /**
  * Check if a deal stage transition represents closing
  */
+const CLOSED_STAGES = new Set(['closed_won', 'closed_lost']);
+
 function isDealClosing(newStage: string | undefined, currentStage: string): boolean {
   if (!newStage) return false;
-  const closedStages = ['closed_won', 'closed_lost'];
-  const isNewStageClosed = closedStages.includes(newStage);
-  const isCurrentStageOpen = !closedStages.includes(currentStage);
+  const isNewStageClosed = CLOSED_STAGES.has(newStage);
+  const isCurrentStageOpen = !CLOSED_STAGES.has(currentStage);
   return isNewStageClosed && isCurrentStageOpen;
 }
 

@@ -7,6 +7,7 @@
 import { ReactNode } from 'react';
 
 export type LoadingVariant = 'spinner' | 'skeleton' | 'dots';
+export type LoadingSize = 'sm' | 'md' | 'lg';
 
 export interface LoadingStateProps {
   /** Loading variant */
@@ -14,7 +15,7 @@ export interface LoadingStateProps {
   /** Loading message */
   readonly message?: string;
   /** Size of the loader */
-  readonly size?: 'sm' | 'md' | 'lg';
+  readonly size?: LoadingSize;
   /** Full page overlay */
   readonly fullPage?: boolean;
   /** Number of skeleton lines (for skeleton variant) */
@@ -41,7 +42,7 @@ const sizeClasses = {
   },
 };
 
-function Spinner({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
+function Spinner({ size = 'md' }: { readonly size?: LoadingSize }) {
   // Use aria-hidden instead of role="presentation" for decorative elements
   return (
     <div
@@ -56,7 +57,7 @@ function Spinner({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-function Dots({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
+function Dots({ size = 'md' }: { readonly size?: LoadingSize }) {
   // Use semantic keys instead of array index
   const dots = ['dot-1', 'dot-2', 'dot-3'] as const;
   return (
@@ -76,7 +77,7 @@ function Dots({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-function SkeletonLines({ lines = 3, size = 'md' }: { readonly lines?: number; readonly size?: 'sm' | 'md' | 'lg' }) {
+function SkeletonLines({ lines = 3, size = 'md' }: { readonly lines?: number; readonly size?: LoadingSize }) {
   const heightClasses = { sm: 'h-3', md: 'h-4', lg: 'h-5' };
   const heightClass = heightClasses[size];
 
@@ -109,12 +110,11 @@ export function LoadingState({
   children,
 }: LoadingStateProps) {
   const content = (
-    <div
+    <output
       className={`
-        flex flex-col items-center justify-center gap-4
+        flex flex-col items-center justify-center gap-4 block
         ${fullPage ? 'min-h-screen' : 'py-12 px-4'}
       `}
-      role="status"
       aria-live="polite"
       aria-busy="true"
     >
@@ -136,7 +136,7 @@ export function LoadingState({
 
       {/* Screen reader announcement */}
       <span className="sr-only">{message}</span>
-    </div>
+    </output>
   );
 
   if (fullPage) {

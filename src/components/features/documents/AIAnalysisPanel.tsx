@@ -87,7 +87,7 @@ function renderEmptyState(onAnalyze?: () => void, hasContent?: boolean) {
 
 function renderLoadingState() {
   return (
-    <div className="py-6" role="status" aria-label="分析中">
+    <output className="py-6 block" aria-label="分析中">
       <div className="flex items-center justify-center gap-2 mb-3">
         <Sparkles className="w-5 h-5 text-accent-600 animate-pulse" />
         <span className="text-sm text-accent-600 font-medium">AI 分析中...</span>
@@ -97,7 +97,7 @@ function renderLoadingState() {
         <div className="h-4 bg-background-hover/50 rounded animate-pulse w-3/4" />
         <div className="h-4 bg-background-hover/50 rounded animate-pulse w-1/2" />
       </div>
-    </div>
+    </output>
   );
 }
 

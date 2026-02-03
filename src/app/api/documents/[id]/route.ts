@@ -310,8 +310,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     if (document.filePath) {
       try {
         await deleteFile(document.filePath);
-      } catch (fileErr) {
-        console.error('Failed to delete file from storage:', fileErr);
+      } catch (error_) {
+        console.error('Failed to delete file from storage:', error_);
         // Continue with DB deletion even if file deletion fails
       }
     }

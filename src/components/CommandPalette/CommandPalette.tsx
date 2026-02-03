@@ -32,8 +32,8 @@ import {
 
 import { useCommandPalette } from './CommandPaletteContext';
 import { usePlatform } from '@/hooks/usePlatform';
-import { useRecentItems, type RecentItem, type RecentItemType } from '@/hooks/useRecentItems';
-import { commands, filterCommands, getCategoryLabel, type Command as CommandType } from '@/lib/commands';
+import { useRecentItems, type RecentItemType } from '@/hooks/useRecentItems';
+import { commands, filterCommands } from '@/lib/commands';
 
 // Type icons mapping
 const typeIcons: Record<RecentItemType, React.ElementType> = {
@@ -284,10 +284,9 @@ export function CommandPalette() {
   const showRecentHeader = !query && !isCommandMode && recentItems.length > 0;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      open
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-transparent m-0 p-0 max-w-none max-h-none w-full h-full"
       aria-label="命令面板"
     >
       {/* Backdrop */}
@@ -441,44 +440,7 @@ export function CommandPalette() {
         </div>
       </div>
 
-      {/* Animation styles */}
-      <style jsx global>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 150ms ease-out;
-        }
-
-        .animate-scale-in {
-          animation: scale-in 150ms ease-out;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .animate-fade-in,
-          .animate-scale-in {
-            animation: none;
-          }
-        }
-      `}</style>
-    </div>,
+    </dialog>,
     document.body
   );
 }

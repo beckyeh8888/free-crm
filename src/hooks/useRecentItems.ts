@@ -26,7 +26,7 @@ interface RecentItem {
  * Safe for SSR - returns empty array on server
  */
 function loadRecentItems(): RecentItem[] {
-  if (typeof window === 'undefined') return [];
+  if (globalThis.window === undefined) return [];
 
   try {
     const stored = localStorage.getItem(STORAGE_KEY);

@@ -13,9 +13,9 @@ import {
   DeleteObjectCommand,
   HeadBucketCommand,
   CreateBucketCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
 
 const S3_ENDPOINT = process.env.S3_ENDPOINT || 'http://localhost:9000';
 const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY || 'minioadmin';
@@ -69,7 +69,7 @@ export function generateFileKey(
 ): string {
   const uuid = crypto.randomUUID();
   // Sanitize filename: remove path separators and special chars
-  const safeName = filename.replace(/[^a-zA-Z0-9._\u4e00-\u9fa5-]/g, '_');
+  const safeName = filename.replaceAll(/[^a-zA-Z0-9._\u4e00-\u9fa5-]/g, '_');
   return `documents/${organizationId}/${uuid}/${safeName}`;
 }
 

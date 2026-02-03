@@ -93,7 +93,7 @@ export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitti
     }
   };
 
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleFileDrop = (e: React.DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setIsDragOver(false);
     const file = e.dataTransfer.files[0];
@@ -127,11 +127,10 @@ export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitti
       />
 
       {/* Dialog */}
-      <div
-        role="dialog"
+      <dialog
+        open
         aria-label={isEdit ? '編輯文件' : '新增文件'}
-        aria-modal="true"
-        className="relative bg-background-surface border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-xl"
+        className="relative bg-background-surface border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-xl m-0 p-0"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -225,25 +224,18 @@ export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitti
               <label htmlFor="doc-file-upload" className="block text-sm font-medium text-text-secondary mb-1.5">
                 上傳檔案
               </label>
-              <div
+              <button
+                type="button"
                 onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                 onDragLeave={() => setIsDragOver(false)}
                 onDrop={handleFileDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={`
                   border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors min-h-[120px]
-                  flex flex-col items-center justify-center gap-2
+                  flex flex-col items-center justify-center gap-2 w-full bg-transparent
                   ${isDragOver ? 'border-accent-600 bg-accent-600/10' : 'border-border hover:border-accent-600/50'}
                 `}
-                role="button"
-                tabIndex={0}
                 aria-label="拖放或點擊上傳檔案"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    fileInputRef.current?.click();
-                  }
-                }}
               >
                 {selectedFile ? (
                   <>
@@ -260,14 +252,14 @@ export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitti
                     <p className="text-xs text-text-muted">或點擊選擇檔案</p>
                   </>
                 )}
-              </div>
+              </button>
               <input
                 ref={fileInputRef}
                 id="doc-file-upload"
                 type="file"
                 onChange={handleFileSelect}
-                className="hidden"
-                aria-hidden="true"
+                className="sr-only"
+                tabIndex={-1}
               />
             </div>
           )}
@@ -301,7 +293,7 @@ export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitti
             </button>
           </div>
         </form>
-      </div>
+      </dialog>
     </div>
   );
 }
