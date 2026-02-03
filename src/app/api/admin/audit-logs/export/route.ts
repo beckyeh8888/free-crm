@@ -40,7 +40,8 @@ function escapeCSV(value: unknown): string {
     return '';
   }
 
-  const str = String(value);
+  // Handle objects and arrays by converting to JSON
+  const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
 
   // Escape double quotes and wrap in quotes if contains special characters
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {

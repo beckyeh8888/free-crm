@@ -10,6 +10,7 @@ import { useDeals } from '@/hooks/useDeals';
 import { pipelineColors, pipelineLabels } from '@/lib/design-tokens';
 
 const stageOrder = ['lead', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
+const SKELETON_IDS = ['skel-1', 'skel-2', 'skel-3', 'skel-4'] as const;
 
 export default function ReportsPage() {
   const { data, isLoading } = useDeals({ limit: 200 });
@@ -38,8 +39,8 @@ export default function ReportsPage() {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={`report-skeleton-${i}`} className="h-64 bg-background-tertiary border border-border rounded-xl" />
+        {SKELETON_IDS.map((id) => (
+          <div key={id} className="h-64 bg-background-tertiary border border-border rounded-xl" />
         ))}
       </div>
     );

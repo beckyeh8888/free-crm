@@ -26,6 +26,9 @@ export interface Column<T> {
   readonly sortable?: boolean;
 }
 
+// Pre-defined skeleton row IDs to avoid array index in keys
+const SKELETON_ROW_IDS = ['skel-row-1', 'skel-row-2', 'skel-row-3', 'skel-row-4', 'skel-row-5', 'skel-row-6', 'skel-row-7', 'skel-row-8', 'skel-row-9', 'skel-row-10'] as const;
+
 export interface DataTableProps<T> {
   /** Column definitions */
   readonly columns: readonly Column<T>[];
@@ -134,11 +137,11 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody className="divide-y divide-primary-200 dark:divide-primary-700">
-            {Array.from({ length: skeletonRows }).map((_, rowIndex) => (
-              <tr key={`skeleton-row-${rowIndex}`}>
+            {SKELETON_ROW_IDS.slice(0, skeletonRows).map((id, idx) => (
+              <tr key={id}>
                 {columns.map((column) => (
                   <td key={String(column.key)} className={cellPadding}>
-                    <Skeleton height={16} width={rowIndex % 2 === 0 ? '80%' : '60%'} />
+                    <Skeleton height={16} width={idx % 2 === 0 ? '80%' : '60%'} />
                   </td>
                 ))}
               </tr>
@@ -210,7 +213,7 @@ export function DataTable<T>({
                       }
                     : undefined
                 }
-                role={onRowClick ? 'button' : undefined}
+                aria-label={onRowClick ? '點擊查看詳情' : undefined}
               >
                 {columns.map((column) => {
                   const value = getCellValue(row, column.key);

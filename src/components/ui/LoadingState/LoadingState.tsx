@@ -77,23 +77,27 @@ function Dots({ size = 'md' }: { readonly size?: LoadingSize }) {
   );
 }
 
+// Pre-defined skeleton line IDs to avoid array index in keys
+const SKELETON_LINE_IDS = ['skel-1', 'skel-2', 'skel-3', 'skel-4', 'skel-5', 'skel-6', 'skel-7', 'skel-8', 'skel-9', 'skel-10'] as const;
+
 function SkeletonLines({ lines = 3, size = 'md' }: { readonly lines?: number; readonly size?: LoadingSize }) {
   const heightClasses = { sm: 'h-3', md: 'h-4', lg: 'h-5' };
   const heightClass = heightClasses[size];
+  const lineIds = SKELETON_LINE_IDS.slice(0, Math.min(lines, SKELETON_LINE_IDS.length));
 
   // Use aria-hidden instead of role="presentation" for decorative elements
   return (
     <div className="w-full space-y-3" aria-hidden="true">
-      {Array.from({ length: lines }).map((_, i) => (
+      {lineIds.map((id, i) => (
         <div
-          key={`skeleton-line-${i}`}
+          key={id}
           className={`
             ${heightClass}
             bg-gray-200 dark:bg-gray-700
             rounded animate-pulse
           `}
           style={{
-            width: i === lines - 1 ? '60%' : '100%',
+            width: i === lineIds.length - 1 ? '60%' : '100%',
           }}
         />
       ))}
