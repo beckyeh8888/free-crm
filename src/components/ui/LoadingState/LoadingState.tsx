@@ -42,6 +42,7 @@ const sizeClasses = {
 };
 
 function Spinner({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
+  // Use aria-hidden instead of role="presentation" for decorative elements
   return (
     <div
       className={`
@@ -50,17 +51,19 @@ function Spinner({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
         border-t-blue-600 dark:border-t-blue-400
         rounded-full animate-spin
       `}
-      role="presentation"
+      aria-hidden="true"
     />
   );
 }
 
 function Dots({ size = 'md' }: { readonly size?: 'sm' | 'md' | 'lg' }) {
+  // Use semantic keys instead of array index
+  const dots = ['dot-1', 'dot-2', 'dot-3'] as const;
   return (
     <div className="flex gap-1.5">
-      {[0, 1, 2].map((i) => (
+      {dots.map((id, i) => (
         <div
-          key={i}
+          key={id}
           className={`
             ${sizeClasses[size].dots}
             bg-blue-600 dark:bg-blue-400
@@ -77,8 +80,9 @@ function SkeletonLines({ lines = 3, size = 'md' }: { readonly lines?: number; re
   const heightClasses = { sm: 'h-3', md: 'h-4', lg: 'h-5' };
   const heightClass = heightClasses[size];
 
+  // Use aria-hidden instead of role="presentation" for decorative elements
   return (
-    <div className="w-full space-y-3" role="presentation">
+    <div className="w-full space-y-3" aria-hidden="true">
       {Array.from({ length: lines }).map((_, i) => (
         <div
           key={`skeleton-line-${i}`}
@@ -158,11 +162,11 @@ export function Skeleton({
   readonly width?: string | number;
   readonly height?: string | number;
 }) {
+  // Use only aria-hidden for decorative elements
   return (
     <div
       className={`bg-gray-200 dark:bg-gray-700 rounded animate-pulse ${className}`}
       style={{ width, height }}
-      role="presentation"
       aria-hidden="true"
     />
   );

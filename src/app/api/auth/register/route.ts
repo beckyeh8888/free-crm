@@ -10,12 +10,13 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
+// Zod v4: Use z.email() instead of z.string().email()
 const registerSchema = z.object({
   name: z
     .string()
     .min(1, '請輸入姓名')
     .max(100, '姓名不得超過 100 字元'),
-  email: z.string().email('請輸入有效的電子郵件'),
+  email: z.email('請輸入有效的電子郵件'),
   password: z
     .string()
     .min(8, '密碼至少需要 8 個字元')

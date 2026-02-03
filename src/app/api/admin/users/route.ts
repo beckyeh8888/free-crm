@@ -44,15 +44,16 @@ function buildUserOrderBy(sortBy: string, sortOrder: 'asc' | 'desc') {
 // Validation Schemas
 // ============================================
 
+// Zod v4: Use z.email() instead of z.string().email()
 const inviteUserSchema = z.object({
-  email: z.string().email('請輸入有效的電子郵件'),
+  email: z.email('請輸入有效的電子郵件'),
   name: z.string().min(1, '請輸入姓名').max(100, '姓名不能超過 100 字'),
   roleId: z.string().min(1, '請選擇角色'),
   sendInviteEmail: z.boolean().default(true),
 });
 
 const createUserSchema = z.object({
-  email: z.string().email('請輸入有效的電子郵件'),
+  email: z.email('請輸入有效的電子郵件'),
   name: z.string().min(1, '請輸入姓名').max(100, '姓名不能超過 100 字'),
   password: z
     .string()

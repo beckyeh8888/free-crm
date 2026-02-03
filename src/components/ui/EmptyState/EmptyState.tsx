@@ -23,10 +23,10 @@ export function EmptyState({
   icon,
   action,
 }: EmptyStateProps) {
+  // Use <output> element instead of div with role="status" for better accessibility
   return (
-    <div
-      className="flex flex-col items-center justify-center py-12 px-4 text-center"
-      role="status"
+    <output
+      className="flex flex-col items-center justify-center py-12 px-4 text-center block"
       aria-label={title}
     >
       {icon ? (
@@ -58,7 +58,7 @@ export function EmptyState({
         </p>
       )}
       {action && <div className="mt-2">{action}</div>}
-    </div>
+    </output>
   );
 }
 

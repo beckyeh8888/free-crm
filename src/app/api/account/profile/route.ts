@@ -19,9 +19,10 @@ import { prisma } from '@/lib/prisma';
 // Validation Schema
 // ============================================
 
+// Zod v4: Use z.url() instead of z.string().url()
 const updateProfileSchema = z.object({
   name: z.string().min(1, '請輸入姓名').max(100, '姓名不能超過 100 字').optional(),
-  image: z.string().url('請輸入有效的圖片網址').optional().nullable(),
+  image: z.url('請輸入有效的圖片網址').optional().nullable(),
 });
 
 // ============================================

@@ -88,20 +88,22 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.status = (user as { status?: string }).status;
-        token.defaultOrganizationId = (user as { defaultOrganizationId?: string }).defaultOrganizationId;
-        token.defaultOrganizationName = (user as { defaultOrganizationName?: string }).defaultOrganizationName;
-        token.defaultRole = (user as { defaultRole?: string }).defaultRole;
+        // Use type guard pattern instead of type assertions
+        if ('status' in user) token.status = user.status;
+        if ('defaultOrganizationId' in user) token.defaultOrganizationId = user.defaultOrganizationId;
+        if ('defaultOrganizationName' in user) token.defaultOrganizationName = user.defaultOrganizationName;
+        if ('defaultRole' in user) token.defaultRole = user.defaultRole;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
-        session.user.id = token.id as string;
-        session.user.status = (token.status as string) || 'active';
-        session.user.defaultOrganizationId = token.defaultOrganizationId as string | undefined;
-        session.user.defaultOrganizationName = token.defaultOrganizationName as string | undefined;
-        session.user.defaultRole = token.defaultRole as string | undefined;
+        // Remove unnecessary type assertions - TypeScript can infer types
+        session.user.id = String(token.id);
+        session.user.status = token.status ? String(token.status) : 'active';
+        session.user.defaultOrganizationId = token.defaultOrganizationId ? String(token.defaultOrganizationId) : undefined;
+        session.user.defaultOrganizationName = token.defaultOrganizationName ? String(token.defaultOrganizationName) : undefined;
+        session.user.defaultRole = token.defaultRole ? String(token.defaultRole) : undefined;
       }
       return session;
     },

@@ -10,7 +10,8 @@
 import { z } from 'zod';
 
 // Common validation patterns
-export const emailSchema = z.string().email('Invalid email format');
+// Zod v4: Use z.email() instead of z.string().email()
+export const emailSchema = z.email('Invalid email format');
 
 export const passwordSchema = z
   .string()
@@ -56,8 +57,9 @@ export const createContactSchema = z.object({
 export const updateContactSchema = createContactSchema.partial();
 
 // Legacy contact schema (with customerId)
+// Zod v4: Use z.cuid() instead of z.string().cuid()
 export const contactSchema = z.object({
-  customerId: z.string().cuid(), // Fixed: cuid() instead of uuid()
+  customerId: z.cuid(),
   name: nameSchema,
   email: emailSchema.optional(),
   phone: phoneSchema.optional(),
@@ -94,9 +96,9 @@ export const createCustomerSchema = z.object({
   type: z.enum(['B2B', 'B2C']).default('B2B'),
   status: z.enum(['active', 'inactive', 'lead']).default('active'),
   notes: z.string().max(5000).optional(),
-  // Multi-tenant fields
-  organizationId: z.string().cuid().optional(), // Can be provided or inferred from context
-  assignedToId: z.string().cuid().optional(), // Assigned sales rep
+  // Multi-tenant fields (Zod v4: z.cuid())
+  organizationId: z.cuid().optional(), // Can be provided or inferred from context
+  assignedToId: z.cuid().optional(), // Assigned sales rep
 });
 
 export const updateCustomerSchema = createCustomerSchema.partial();
@@ -108,8 +110,9 @@ export type UpdateCustomer = z.infer<typeof updateCustomerSchema>;
 // Document Analysis Schema
 // ============================================
 
+// Zod v4: Use z.cuid() instead of z.string().cuid()
 export const documentAnalysisSchema = z.object({
-  documentId: z.string().cuid(), // Fixed: cuid() instead of uuid()
+  documentId: z.cuid(),
   analysisType: z.enum(['contract', 'email', 'meeting_notes', 'quotation']),
   options: z
     .object({
@@ -135,17 +138,18 @@ export const dealStageEnum = z.enum([
   'closed_lost',
 ]);
 
+// Zod v4: Use z.cuid() and z.iso.datetime()
 export const createDealSchema = z.object({
   title: z.string().min(1, '請輸入商機名稱').max(200),
-  customerId: z.string().cuid('無效的客戶 ID'),
+  customerId: z.cuid({ message: '無效的客戶 ID' }),
   value: z.number().min(0).optional(),
   currency: z.string().length(3).default('TWD'),
   stage: dealStageEnum.default('lead'),
   probability: z.number().min(0).max(100).default(0),
-  closeDate: z.string().datetime().optional(),
+  closeDate: z.iso.datetime().optional(),
   notes: z.string().max(5000).optional(),
   // Multi-tenant field
-  assignedToId: z.string().cuid().optional(), // Assigned sales rep
+  assignedToId: z.cuid().optional(), // Assigned sales rep
 });
 
 export const updateDealSchema = z.object({
@@ -154,15 +158,15 @@ export const updateDealSchema = z.object({
   currency: z.string().length(3).optional(),
   stage: dealStageEnum.optional(),
   probability: z.number().min(0).max(100).optional(),
-  closeDate: z.string().datetime().optional().nullable(),
+  closeDate: z.iso.datetime().optional().nullable(),
   notes: z.string().max(5000).optional(),
-  assignedToId: z.string().cuid().optional().nullable(), // Can reassign
+  assignedToId: z.cuid().optional().nullable(), // Can reassign
 });
 
 export const dealFilterSchema = z.object({
   search: z.string().optional(),
   stage: dealStageEnum.optional(),
-  customerId: z.string().cuid().optional(),
+  customerId: z.cuid().optional(),
   minValue: z.coerce.number().optional(),
   maxValue: z.coerce.number().optional(),
 });
@@ -186,20 +190,20 @@ export const createDocumentSchema = z.object({
   name: z.string().min(1, '請輸入文件名稱').max(200),
   type: documentTypeEnum.default('contract'),
   content: z.string().max(50000).optional(),
-  customerId: z.string().cuid('無效的客戶 ID').optional().nullable(),
+  customerId: z.cuid({ message: '無效的客戶 ID' }).optional().nullable(),
 });
 
 export const updateDocumentSchema = z.object({
   name: z.string().min(1, '請輸入文件名稱').max(200).optional(),
   type: documentTypeEnum.optional(),
   content: z.string().max(50000).optional(),
-  customerId: z.string().cuid('無效的客戶 ID').optional().nullable(),
+  customerId: z.cuid({ message: '無效的客戶 ID' }).optional().nullable(),
 });
 
 export const documentFilterSchema = z.object({
   search: z.string().optional(),
   type: documentTypeEnum.optional(),
-  customerId: z.string().cuid().optional(),
+  customerId: z.cuid().optional(),
 });
 
 export type CreateDocument = z.infer<typeof createDocumentSchema>;

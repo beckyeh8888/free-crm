@@ -43,17 +43,13 @@ function detectIsMac(): boolean {
 }
 
 export function usePlatform(): PlatformInfo {
-  // Initialize with detection function - safe for SSR as it returns false on server
-  const [isMac, setIsMac] = useState(detectIsMac);
+  // Start with false for SSR, will update on client mount
+  const [isMac, setIsMac] = useState(false);
 
-  // Re-check on mount in case hydration mismatch
+  // Detect platform on mount (client-side only)
   useEffect(() => {
-    const detected = detectIsMac();
-    if (detected === isMac) {
-      return;
-    }
-    setIsMac(detected);
-  }, [isMac]);
+    setIsMac(detectIsMac());
+  }, []);
 
   const isModKeyPressed = useCallback(
     (e: KeyboardEvent): boolean => {

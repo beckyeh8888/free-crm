@@ -12,7 +12,8 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  let databaseUrl = process.env.DATABASE_URL || 'file:./dev.db';
+  // Use ?? instead of || for nullish coalescing
+  let databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db';
 
   // For local file URLs with libsql adapter, resolve to absolute path
   if (databaseUrl.startsWith('file:./') || databaseUrl.startsWith('file:dev.db')) {

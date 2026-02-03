@@ -10,6 +10,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from 'react';
 
@@ -52,8 +53,14 @@ export function SidebarProvider({ children }: { readonly children: ReactNode }) 
     setIsCollapsed(true);
   }, []);
 
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(
+    () => ({ isCollapsed, toggle, expand, collapse }),
+    [isCollapsed, toggle, expand, collapse]
+  );
+
   return (
-    <SidebarContext.Provider value={{ isCollapsed, toggle, expand, collapse }}>
+    <SidebarContext.Provider value={value}>
       {children}
     </SidebarContext.Provider>
   );
