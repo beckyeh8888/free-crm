@@ -7,14 +7,13 @@
  */
 
 import { useState } from 'react';
-import { Plus, Search, Shield, MoreVertical, Edit2, Trash2, UserX, UserCheck, Building2, Loader2, Users, FileText, Briefcase } from 'lucide-react';
+import { Plus, Search, Shield, MoreVertical, Edit2, Trash2, UserX, UserCheck, Building2, Loader2, Users, FileText, Briefcase, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAdminUsers, useDeleteUser, useSuspendUser, useActivateUser, type AdminUser } from '@/hooks/useAdminUsers';
 import { useAdminRoles, useDeleteRole, type AdminRole } from '@/hooks/useAdminRoles';
 import { useOrganization, useOrganizationStats, useUpdateOrganization } from '@/hooks/useOrganization';
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/services/api';
+import { useAuditLogs, type AuditLogFilters as AuditFilters } from '@/hooks/useAuditLogs';
 import { statusColors } from '@/lib/design-tokens';
-import { InviteUserModal, EditUserModal, ConfirmDialog, CreateRoleModal, EditRoleModal } from '@/components/features/admin';
+import { InviteUserModal, EditUserModal, ConfirmDialog, CreateRoleModal, EditRoleModal, AuditLogFilters, ACTION_LABELS, ENTITY_LABELS, ExportAuditLogsModal } from '@/components/features/admin';
 
 type TabKey = 'users' | 'roles' | 'audit' | 'organization';
 
@@ -24,18 +23,6 @@ const tabs: readonly { readonly key: TabKey; readonly label: string }[] = [
   { key: 'audit', label: '審計日誌' },
   { key: 'organization', label: '組織' },
 ];
-
-interface AuditEntry {
-  readonly id: string;
-  readonly action: string;
-  readonly entity: string;
-  readonly entityId: string | null;
-  readonly createdAt: string;
-  readonly user: {
-    readonly name: string | null;
-    readonly email: string;
-  } | null;
-}
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('users');
@@ -486,72 +473,150 @@ function RolesTab({ search }: { readonly search: string }) {
 }
 
 function AuditTab() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['admin-audit'],
-    queryFn: () => apiClient.get<{ readonly success: boolean; readonly data: readonly AuditEntry[] }>('/api/admin/audit-logs'),
-  });
+  const [filters, setFilters] = useState<AuditFilters>({});
+  const [page, setPage] = useState(1);
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  const { data, isLoading } = useAuditLogs({ filters, page, limit: 20 });
 
   const logs = data?.data ?? [];
+  const pagination = data?.pagination;
+  const filterOptions = data?.filterOptions;
 
-  const actionLabels: Record<string, string> = {
-    create: '新增',
-    update: '更新',
-    delete: '刪除',
-    login: '登入',
-    logout: '登出',
-    member_invite: '邀請成員',
-    member_remove: '移除成員',
-    member_suspend: '停用成員',
-    role_change: '變更角色',
+  const handleFilterChange = (newFilters: AuditFilters) => {
+    setFilters(newFilters);
+    setPage(1); // Reset to first page when filters change
   };
 
-  if (isLoading) {
+  const handleClearFilters = () => {
+    setFilters({});
+    setPage(1);
+  };
+
+  if (isLoading && page === 1) {
     return (
-      <div className="bg-background-tertiary border border-border rounded-xl">
-        {AUDIT_SKELETON_KEYS.map((key) => (
-          <div key={key} className="h-12 animate-pulse border-b border-border-subtle last:border-0" />
-        ))}
+      <div className="space-y-4">
+        <div className="h-10 bg-background-tertiary rounded-lg animate-pulse w-24" />
+        <div className="bg-background-tertiary border border-border rounded-xl">
+          {AUDIT_SKELETON_KEYS.map((key) => (
+            <div key={key} className="h-12 animate-pulse border-b border-border-subtle last:border-0" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-background-tertiary border border-border rounded-xl">
-      <div className="divide-y divide-border-subtle">
-        {logs.map((log) => {
-          const time = new Date(log.createdAt).toLocaleTimeString('zh-TW', {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-          const date = new Date(log.createdAt).toLocaleDateString('zh-TW', {
-            month: 'short',
-            day: 'numeric',
-          });
-          const userName = log.user?.name || log.user?.email || '系統';
-          const initials = userName.slice(0, 2).toUpperCase();
+    <div className="space-y-4">
+      {/* Header with Filters and Export */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <AuditLogFilters
+          filters={filters}
+          filterOptions={filterOptions}
+          onFilterChange={handleFilterChange}
+          onClear={handleClearFilters}
+        />
+        <button
+          type="button"
+          onClick={() => setShowExportModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-text-secondary hover:bg-background-hover transition-colors min-h-[40px] self-start"
+        >
+          <Download className="w-4 h-4" />
+          匯出
+        </button>
+      </div>
 
-          return (
-            <div key={log.id} className="flex items-center gap-3 px-4 py-2.5 min-h-[48px]">
-              <div className="text-xs text-text-muted w-20 flex-shrink-0">
-                <div>{date}</div>
-                <div>{time}</div>
-              </div>
-              <div className="w-6 h-6 rounded-full bg-accent-600 flex items-center justify-center flex-shrink-0">
-                <span className="text-[10px] font-medium text-white">{initials}</span>
-              </div>
-              <span className="text-sm text-text-secondary">
-                {actionLabels[log.action] || log.action}
-              </span>
-              <span className="text-sm text-text-primary">{log.entity}</span>
-            </div>
-          );
-        })}
-        {logs.length === 0 && (
+      {/* Log List */}
+      <div className="bg-background-tertiary border border-border rounded-xl">
+        {isLoading ? (
+          <div className="divide-y divide-border-subtle">
+            {AUDIT_SKELETON_KEYS.map((key) => (
+              <div key={key} className="h-12 animate-pulse" />
+            ))}
+          </div>
+        ) : logs.length > 0 ? (
+          <div className="divide-y divide-border-subtle">
+            {logs.map((log) => {
+              const time = new Date(log.createdAt).toLocaleTimeString('zh-TW', {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+              const date = new Date(log.createdAt).toLocaleDateString('zh-TW', {
+                month: 'short',
+                day: 'numeric',
+              });
+              const userName = log.user?.name || log.user?.email || '系統';
+              const initials = userName.slice(0, 2).toUpperCase();
+
+              return (
+                <div key={log.id} className="flex items-center gap-3 px-4 py-2.5 min-h-[48px]">
+                  <div className="text-xs text-text-muted w-20 flex-shrink-0">
+                    <div>{date}</div>
+                    <div>{time}</div>
+                  </div>
+                  <div className="w-6 h-6 rounded-full bg-accent-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-[10px] font-medium text-white">{initials}</span>
+                  </div>
+                  <span className="text-sm text-text-secondary">
+                    {ACTION_LABELS[log.action] || log.action}
+                  </span>
+                  <span className="text-sm text-text-primary">
+                    {ENTITY_LABELS[log.entity] || log.entity}
+                  </span>
+                  {log.entityId && (
+                    <span className="text-xs text-text-muted truncate max-w-[100px]">
+                      #{log.entityId.slice(0, 8)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
           <div className="py-12 text-center">
-            <p className="text-sm text-text-muted">尚無審計記錄</p>
+            <p className="text-sm text-text-muted">
+              {Object.values(filters).some((v) => v) ? '沒有符合篩選條件的記錄' : '尚無審計記錄'}
+            </p>
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-text-muted">
+            共 {pagination.total} 筆，第 {pagination.page}/{pagination.totalPages} 頁
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-text-secondary hover:bg-background-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="上一頁"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={page === pagination.totalPages}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-text-secondary hover:bg-background-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="下一頁"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <ExportAuditLogsModal
+          filters={filters}
+          onClose={() => setShowExportModal(false)}
+        />
+      )}
     </div>
   );
 }
