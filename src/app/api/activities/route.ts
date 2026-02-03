@@ -19,6 +19,34 @@ import { prisma } from '@/lib/prisma';
 import { getUserDefaultOrganization } from '@/lib/rbac';
 
 // ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Build date range filter for createdAt
+ */
+function buildDateFilter(
+  startDate: string | null,
+  endDate: string | null
+): Record<string, Date> | undefined {
+  if (!startDate && !endDate) return undefined;
+
+  const filter: Record<string, Date> = {};
+
+  if (startDate) {
+    filter.gte = new Date(startDate);
+  }
+
+  if (endDate) {
+    const end = new Date(endDate);
+    end.setDate(end.getDate() + 1);
+    filter.lt = end;
+  }
+
+  return filter;
+}
+
+// ============================================
 // GET /api/activities - List user's activities
 // ============================================
 
@@ -109,16 +137,9 @@ export async function GET(request: Request) {
       where.entity = entity;
     }
 
-    if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) {
-        (where.createdAt as Record<string, unknown>).gte = new Date(startDate);
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setDate(end.getDate() + 1);
-        (where.createdAt as Record<string, unknown>).lt = end;
-      }
+    const dateFilter = buildDateFilter(startDate, endDate);
+    if (dateFilter) {
+      where.createdAt = dateFilter;
     }
 
     // 6. Query activities

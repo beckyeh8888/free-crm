@@ -170,7 +170,7 @@ export function ActivityItem({ activity, onNavigate }: ActivityItemProps) {
 function getEntityTitle(activity: Activity): string {
   if (!activity.details) return '';
 
-  const details = activity.details as Record<string, unknown>;
+  const details = activity.details;
 
   // Try common title fields
   if (typeof details.title === 'string') return details.title;
