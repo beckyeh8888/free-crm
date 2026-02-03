@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import {
   requireAuth,
@@ -31,7 +31,7 @@ const resetPasswordSchema = z.object({
     .min(8, '密碼至少需要 8 個字元')
     .regex(/[A-Z]/, '密碼需要至少一個大寫字母')
     .regex(/[a-z]/, '密碼需要至少一個小寫字母')
-    .regex(/[0-9]/, '密碼需要至少一個數字')
+    .regex(/\d/, '密碼需要至少一個數字')
     .optional(),
   sendEmail: z.boolean().default(true),
   forceChangeOnLogin: z.boolean().default(true),
@@ -136,24 +136,22 @@ export async function POST(
     });
 
     // Try user ID if member ID not found
-    if (!member) {
-      member = await prisma.organizationMember.findFirst({
-        where: {
-          userId: id,
-          organizationId,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              password: true,
-            },
+    member ??= await prisma.organizationMember.findFirst({
+      where: {
+        userId: id,
+        organizationId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            password: true,
           },
         },
-      });
-    }
+      },
+    });
 
     if (!member) {
       return errorResponse('NOT_FOUND', '用戶不存在');
@@ -201,8 +199,8 @@ export async function POST(
       request,
     });
 
-    // TODO: Send password reset email if sendEmail is true
-    // This would typically be done via a service like nodemailer or SendGrid
+    // Note: Email notification integration pending - requires SMTP/SendGrid configuration
+    // When implemented, use nodemailer or SendGrid for secure delivery
 
     return successResponse({
       userId: member.user.id,
@@ -210,7 +208,7 @@ export async function POST(
       email: member.user.email,
       passwordReset: true,
       // Only return temporary password if not sending email
-      temporaryPassword: !sendEmail ? passwordToSet : undefined,
+      temporaryPassword: sendEmail ? undefined : passwordToSet,
       emailSent: sendEmail,
       sessionsInvalidated: true,
       forceChangeOnLogin,

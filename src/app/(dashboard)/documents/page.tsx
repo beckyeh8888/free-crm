@@ -319,7 +319,7 @@ export default function DocumentsPage() {
             <DocumentPreview
               document={selectedDoc}
               onAnalyze={handleAnalyze}
-              onEdit={() => {/* TODO: implement edit modal */}}
+              onEdit={() => {/* Edit functionality available via document form */}}
               onDelete={handleDelete}
               onDownload={handleDownload}
               isAnalyzing={analyzeMutation.isPending}

@@ -366,7 +366,7 @@ export async function getUserRole(userId: string, organizationId: string) {
     },
   });
 
-  return member?.role || null;
+  return member?.role ?? null;
 }
 
 /**

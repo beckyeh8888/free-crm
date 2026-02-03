@@ -94,29 +94,27 @@ export async function POST(
     });
 
     // Try user ID if member ID not found
-    if (!member) {
-      member = await prisma.organizationMember.findFirst({
-        where: {
-          userId: id,
-          organizationId,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              status: true,
-            },
-          },
-          role: {
-            select: {
-              name: true,
-            },
+    member ??= await prisma.organizationMember.findFirst({
+      where: {
+        userId: id,
+        organizationId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            status: true,
           },
         },
-      });
-    }
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
 
     if (!member) {
       return errorResponse('NOT_FOUND', '用戶不存在');
@@ -161,7 +159,7 @@ export async function POST(
       },
       after: {
         status: newStatus,
-        reason: reason || null,
+        reason: reason ?? null,
       },
       request,
     });

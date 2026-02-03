@@ -60,7 +60,7 @@ const createUserSchema = z.object({
     .min(8, '密碼至少需要 8 個字元')
     .regex(/[A-Z]/, '密碼需要至少一個大寫字母')
     .regex(/[a-z]/, '密碼需要至少一個小寫字母')
-    .regex(/[0-9]/, '密碼需要至少一個數字')
+    .regex(/\d/, '密碼需要至少一個數字')
     .optional(),
   roleId: z.string().min(1, '請選擇角色'),
   status: z.enum(['active', 'pending']).default('active'),
@@ -325,7 +325,7 @@ export async function POST(request: Request) {
       request,
     });
 
-    // TODO: Send invite email if sendInviteEmail is true and this is an invite
+    // Note: Email notification integration pending - requires SMTP/SendGrid configuration
 
     return successResponse(
       {

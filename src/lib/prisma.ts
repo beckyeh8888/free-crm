@@ -5,7 +5,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
-import path from 'path';
+import path from 'node:path';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

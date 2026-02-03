@@ -8,7 +8,7 @@
  */
 
 import * as OTPAuth from 'otpauth';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 // ============================================
 // Configuration

@@ -22,7 +22,7 @@ const registerSchema = z.object({
     .min(8, '密碼至少需要 8 個字元')
     .regex(/[A-Z]/, '密碼需包含大寫字母')
     .regex(/[a-z]/, '密碼需包含小寫字母')
-    .regex(/[0-9]/, '密碼需包含數字')
+    .regex(/\d/, '密碼需包含數字')
     .regex(/[^A-Za-z0-9]/, '密碼需包含特殊字元'),
 });
 

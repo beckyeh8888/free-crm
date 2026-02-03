@@ -56,8 +56,8 @@ export function useKeyboardShortcuts(): void {
       // Example: Escape to close modals (handled by modal itself)
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    globalThis.addEventListener('keydown', handleKeyDown);
+    return () => globalThis.removeEventListener('keydown', handleKeyDown);
   }, [isModKeyPressed, toggle]);
 }
 

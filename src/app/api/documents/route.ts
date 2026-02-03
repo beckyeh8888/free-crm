@@ -115,6 +115,108 @@ export async function GET(request: NextRequest) {
   return listResponse(documents, { page, limit, total });
 }
 
+// ============================================
+// Helper Types for Document Creation
+// ============================================
+
+interface DocumentInput {
+  name: string;
+  type: string;
+  content?: string;
+  customerId?: string | null;
+  filePath?: string;
+  fileSize?: number;
+  mimeType?: string;
+  bodyOrgId?: string;
+}
+
+// ============================================
+// Helper Functions for Document Creation
+// ============================================
+
+/**
+ * Resolve organization ID from request or user's default
+ */
+async function resolveOrganizationId(
+  request: NextRequest,
+  userId: string,
+  bodyOrgId?: string
+): Promise<string | null> {
+  let orgId = bodyOrgId || getOrganizationId(request);
+  if (orgId) return orgId;
+
+  const defaultOrg = await getUserDefaultOrganization(userId);
+  return defaultOrg?.organization.id ?? null;
+}
+
+/**
+ * Parse form data input and upload file
+ */
+async function parseFormDataInput(
+  request: NextRequest,
+  userId: string
+): Promise<{ data: DocumentInput; error?: Response }> {
+  const formData = await request.formData();
+  const file = formData.get('file') as File | null;
+  const name = (formData.get('name') as string) || file?.name || '';
+  const type = (formData.get('type') as string) || 'contract';
+  const customerId = (formData.get('customerId') as string) ?? null;
+  const bodyOrgId = (formData.get('organizationId') as string) || undefined;
+
+  if (!file) {
+    return { data: { name, type }, error: errorResponse('VALIDATION_ERROR', '請選擇要上傳的檔案') };
+  }
+
+  const orgId = await resolveOrganizationId(request, userId, bodyOrgId);
+  if (!orgId) {
+    return { data: { name, type }, error: errorResponse('VALIDATION_ERROR', '請指定組織或先加入一個組織') };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const fileKey = generateFileKey(orgId, file.name);
+  await uploadFile(fileKey, buffer, file.type);
+
+  return {
+    data: {
+      name,
+      type,
+      customerId,
+      filePath: fileKey,
+      fileSize: buffer.length,
+      mimeType: file.type,
+      bodyOrgId,
+    },
+  };
+}
+
+/**
+ * Parse JSON input for document creation
+ */
+async function parseJsonInput(
+  request: NextRequest
+): Promise<{ data: DocumentInput; error?: Response }> {
+  const body = await request.json();
+  const result = createDocumentSchema.safeParse(body);
+
+  if (!result.success) {
+    return {
+      data: { name: '', type: '' },
+      error: errorResponse('VALIDATION_ERROR', result.error.issues[0].message),
+    };
+  }
+
+  const parsed = result.data;
+  return {
+    data: {
+      name: parsed.name,
+      type: parsed.type,
+      content: parsed.content,
+      customerId: parsed.customerId,
+      bodyOrgId: body.organizationId,
+    },
+  };
+}
+
 /**
  * POST /api/documents
  * Create a new document within an organization
@@ -133,82 +235,19 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get('content-type') || '';
     const isFormData = contentType.includes('multipart/form-data');
 
-    let name: string;
-    let type: string;
-    let content: string | undefined;
-    let customerId: string | null | undefined;
-    let filePath: string | undefined;
-    let fileSize: number | undefined;
-    let mimeType: string | undefined;
-    let bodyOrgId: string | undefined;
+    // Parse input based on content type
+    const parseResult = isFormData
+      ? await parseFormDataInput(request, session.user.id)
+      : await parseJsonInput(request);
 
-    if (isFormData) {
-      // File upload mode
-      const formData = await request.formData();
-      const file = formData.get('file') as File | null;
-      name = (formData.get('name') as string) || '';
-      type = (formData.get('type') as string) || 'contract';
-      customerId = (formData.get('customerId') as string) || null;
-      bodyOrgId = (formData.get('organizationId') as string) || undefined;
+    if (parseResult.error) return parseResult.error;
 
-      if (!file) {
-        return errorResponse('VALIDATION_ERROR', '請選擇要上傳的檔案');
-      }
-
-      // Use filename as document name if not provided
-      if (!name) {
-        name = file.name;
-      }
-
-      // Get organization ID first for file key
-      let orgId = bodyOrgId || getOrganizationId(request);
-      if (!orgId) {
-        const defaultOrg = await getUserDefaultOrganization(session.user.id);
-        if (defaultOrg) {
-          orgId = defaultOrg.organization.id;
-        }
-      }
-      if (!orgId) {
-        return errorResponse('VALIDATION_ERROR', '請指定組織或先加入一個組織');
-      }
-
-      // Upload file to MinIO
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const fileKey = generateFileKey(orgId, file.name);
-      await uploadFile(fileKey, buffer, file.type);
-
-      filePath = fileKey;
-      fileSize = buffer.length;
-      mimeType = file.type;
-    } else {
-      // JSON mode
-      const body = await request.json();
-      const result = createDocumentSchema.safeParse(body);
-      if (!result.success) {
-        return errorResponse(
-          'VALIDATION_ERROR',
-          result.error.issues[0].message
-        );
-      }
-
-      const data = result.data;
-      name = data.name;
-      type = data.type;
-      content = data.content;
-      customerId = data.customerId;
-      bodyOrgId = body.organizationId;
-    }
+    const { name, type, content, customerId, filePath, fileSize, mimeType, bodyOrgId } = parseResult.data;
 
     // Get organization ID
-    let organizationId = bodyOrgId || getOrganizationId(request);
-
+    const organizationId = await resolveOrganizationId(request, session.user.id, bodyOrgId);
     if (!organizationId) {
-      const defaultOrg = await getUserDefaultOrganization(session.user.id);
-      if (defaultOrg) {
-        organizationId = defaultOrg.organization.id;
-      } else {
-        return errorResponse('VALIDATION_ERROR', '請指定組織或先加入一個組織');
-      }
+      return errorResponse('VALIDATION_ERROR', '請指定組織或先加入一個組織');
     }
 
     // Check permission for creating documents
@@ -238,7 +277,7 @@ export async function POST(request: NextRequest) {
         filePath,
         fileSize,
         mimeType,
-        customerId: customerId || null,
+        customerId: customerId ?? null,
         organizationId,
       },
       select: {

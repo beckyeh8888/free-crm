@@ -93,9 +93,8 @@ export function FilterBar({
     onClear?.();
   }, [fields, onChange, onClear]);
 
-  // Use React.FormEventHandler instead of deprecated React.EventHandler
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = useCallback(
-    (e) => {
+  const handleSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       onSubmit?.();
     },

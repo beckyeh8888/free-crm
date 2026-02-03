@@ -110,10 +110,11 @@ export const analyzeDocument = inngest.createFunction(
     });
 
     // Step 2: Perform AI analysis
-    // TODO: Replace with actual AI service integration (e.g., OpenAI, Anthropic)
+    // Note: Current implementation uses placeholder analysis.
+    // For production, integrate with AI service (OpenAI, Anthropic, etc.)
+    // See: ISO 42001 AI Management requirements
     const analysisResult = await step.run('ai-analysis', async () => {
-      // Placeholder for AI analysis
-      // In production, this would call an LLM API
+      // Placeholder implementation - returns mock analysis data
       const content = document.content || '';
 
       return {

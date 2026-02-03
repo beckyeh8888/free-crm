@@ -103,7 +103,7 @@ export async function GET(request: Request) {
         totalLogins: successCount + failedCount,
         successfulLogins: successCount,
         failedAttempts: failedCount,
-        lastSuccessfulLogin: lastSuccessfulLogin?.createdAt || null,
+        lastSuccessfulLogin: lastSuccessfulLogin?.createdAt ?? null,
       },
     };
 

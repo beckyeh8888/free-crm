@@ -27,7 +27,7 @@ const changePasswordSchema = z
       .min(8, '密碼至少需要 8 個字元')
       .regex(/[A-Z]/, '密碼需要至少一個大寫字母')
       .regex(/[a-z]/, '密碼需要至少一個小寫字母')
-      .regex(/[0-9]/, '密碼需要至少一個數字')
+      .regex(/\d/, '密碼需要至少一個數字')
       .regex(/[!@#$%^&*(),.?":{}|<>]/, '密碼需要至少一個特殊字元'),
     confirmPassword: z.string().min(1, '請確認新密碼'),
   })
