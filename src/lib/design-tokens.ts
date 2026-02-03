@@ -143,6 +143,7 @@ export const navItems = [
   { key: 'customers', label: '客戶', href: '/customers', icon: 'Users' },
   { key: 'deals', label: '商機', href: '/deals', icon: 'Handshake' },
   { key: 'documents', label: '文件', href: '/documents', icon: 'FileText' },
+  { key: 'activities', label: '活動', href: '/activities', icon: 'Activity' },
   { key: 'reports', label: '報表', href: '/reports', icon: 'BarChart3' },
   { key: 'settings', label: '設定', href: '/settings', icon: 'Settings' },
   { key: 'admin', label: '管理', href: '/admin', icon: 'Shield' },
