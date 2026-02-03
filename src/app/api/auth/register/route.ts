@@ -56,31 +56,75 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-      },
-    });
+    // Create user with organization in a transaction
+    const user = await prisma.$transaction(async (tx) => {
+      // 1. Create user
+      const newUser = await tx.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+      });
 
-    // Log audit event
-    await prisma.auditLog.create({
-      data: {
-        action: 'create',
-        entity: 'user',
-        entityId: user.id,
-        details: JSON.stringify({ email: user.email }),
-        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
-      },
+      // 2. Find or create Owner role
+      let ownerRole = await tx.role.findFirst({
+        where: { name: 'Owner', isSystem: true },
+      });
+
+      if (!ownerRole) {
+        ownerRole = await tx.role.create({
+          data: {
+            name: 'Owner',
+            description: '組織擁有者，擁有所有權限',
+            isSystem: true,
+          },
+        });
+      }
+
+      // 3. Create personal organization
+      const orgName = name || email.split('@')[0];
+      const organization = await tx.organization.create({
+        data: {
+          name: `${orgName} 的組織`,
+          slug: `org-${newUser.id.slice(0, 8)}`,
+          plan: 'free',
+        },
+      });
+
+      // 4. Create organization membership with Owner role
+      await tx.organizationMember.create({
+        data: {
+          userId: newUser.id,
+          organizationId: organization.id,
+          roleId: ownerRole.id,
+          status: 'active',
+        },
+      });
+
+      // 5. Log audit event
+      await tx.auditLog.create({
+        data: {
+          action: 'create',
+          entity: 'user',
+          entityId: newUser.id,
+          organizationId: organization.id,
+          details: JSON.stringify({
+            email: newUser.email,
+            organizationName: organization.name,
+          }),
+          ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown',
+        },
+      });
+
+      return newUser;
     });
 
     return NextResponse.json(

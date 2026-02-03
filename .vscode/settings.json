@@ -1,0 +1,7 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "beckyeh8888",
+        "projectKey": "beckyeh8888_free-crm"
+    },
+    "css.lint.unknownAtRules": "ignore"
+}

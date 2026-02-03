@@ -145,26 +145,45 @@ export function Sidebar() {
             </span>
           )}
         </button>
-      </div>
 
-      {/* Collapse Toggle */}
-      <div className="border-t border-border p-3">
+        {/* Collapse Toggle - merged into same section */}
         <button
           type="button"
           onClick={toggle}
-          className="
-            flex items-center justify-center w-full h-10 rounded-lg
+          className={`
+            group relative flex items-center w-full px-3 py-2.5 mt-2 rounded-lg
             text-text-muted hover:bg-background-hover hover:text-text-secondary
             transition-colors duration-200
+            min-h-[44px]
             focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background
-          "
+            ${isCollapsed ? 'justify-center' : 'gap-3'}
+          `}
           aria-label={isCollapsed ? '展開側邊欄' : '收合側邊欄'}
           aria-expanded={!isCollapsed}
         >
           {isCollapsed ? (
             <ChevronRight className="w-5 h-5" />
           ) : (
-            <ChevronLeft className="w-5 h-5" />
+            <>
+              <ChevronLeft className="w-5 h-5" />
+              <span>收合</span>
+            </>
+          )}
+
+          {/* Tooltip when collapsed */}
+          {isCollapsed && (
+            <span
+              className="
+                absolute left-full ml-2 px-2 py-1
+                bg-background-tertiary text-text-primary text-sm rounded border border-border
+                opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                transition-opacity duration-200
+                whitespace-nowrap z-50
+              "
+              role="tooltip"
+            >
+              展開側邊欄
+            </span>
           )}
         </button>
       </div>

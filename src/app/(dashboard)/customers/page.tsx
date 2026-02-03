@@ -41,6 +41,10 @@ export default function CustomersPage() {
   const handleCreate = (formData: CustomerFormData) => {
     createMutation.mutate(formData, {
       onSuccess: () => setShowForm(false),
+      onError: (error) => {
+        console.error('建立客戶失敗:', error);
+        alert(`建立失敗: ${error instanceof Error ? error.message : '未知錯誤'}`);
+      },
     });
   };
 
