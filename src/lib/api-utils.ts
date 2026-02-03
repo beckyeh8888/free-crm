@@ -423,6 +423,7 @@ export type AuditAction =
   | 'read'
   | 'update'
   | 'delete'
+  | 'export'
   | 'login'
   | 'logout'
   | 'permission_change'

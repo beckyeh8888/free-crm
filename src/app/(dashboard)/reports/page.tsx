@@ -6,15 +6,19 @@
  * WCAG 2.2 AAA Compliant
  */
 
+import { useState, useCallback } from 'react';
 import { useDeals } from '@/hooks/useDeals';
 import { pipelineColors, pipelineLabels } from '@/lib/design-tokens';
 
 const stageOrder = ['lead', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
 const SKELETON_IDS = ['skel-1', 'skel-2', 'skel-3', 'skel-4'] as const;
 
+type ExportFormat = 'csv' | 'json';
+
 export default function ReportsPage() {
   const { data, isLoading } = useDeals({ limit: 200 });
   const deals = data?.data ?? [];
+  const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null);
 
   // Aggregate stats
   const stageGroups: Record<string, { count: number; value: number }> = {};
@@ -36,6 +40,48 @@ export default function ReportsPage() {
 
   const maxCount = Math.max(...Object.values(stageGroups).map((s) => s.count), 1);
 
+  /**
+   * Handle export to CSV or JSON
+   */
+  const handleExport = useCallback(async (format: ExportFormat) => {
+    setExportingFormat(format);
+    try {
+      const response = await fetch('/api/reports/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ format, limit: 1000 }),
+      });
+
+      if (!response.ok) {
+        throw new Error('匯出失敗');
+      }
+
+      // Get the blob and create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] ?? `deals-report.${format}`;
+
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('匯出報表失敗，請稍後再試');
+    } finally {
+      setExportingFormat(null);
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
@@ -52,15 +98,21 @@ export default function ReportsPage() {
       <div className="flex items-center justify-end gap-2">
         <button
           type="button"
-          className="px-3 py-1.5 rounded-lg text-sm border border-border text-text-secondary hover:bg-background-hover transition-colors min-h-[36px]"
+          onClick={() => handleExport('json')}
+          disabled={exportingFormat !== null}
+          aria-label="匯出 JSON 格式報表"
+          className="px-3 py-1.5 rounded-lg text-sm border border-border text-text-secondary hover:bg-background-hover transition-colors min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          PDF
+          {exportingFormat === 'json' ? '匯出中...' : 'JSON'}
         </button>
         <button
           type="button"
-          className="px-3 py-1.5 rounded-lg text-sm border border-border text-text-secondary hover:bg-background-hover transition-colors min-h-[36px]"
+          onClick={() => handleExport('csv')}
+          disabled={exportingFormat !== null}
+          aria-label="匯出 CSV 格式報表"
+          className="px-3 py-1.5 rounded-lg text-sm border border-border text-text-secondary hover:bg-background-hover transition-colors min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          CSV
+          {exportingFormat === 'csv' ? '匯出中...' : 'CSV'}
         </button>
       </div>
 
