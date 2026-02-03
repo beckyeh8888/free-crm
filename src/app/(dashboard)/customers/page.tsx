@@ -10,6 +10,7 @@ import { Plus, Search } from 'lucide-react';
 import { useCustomers, useCreateCustomer, type Customer } from '@/hooks/useCustomers';
 import { CustomerRow } from '@/components/features/customers/CustomerRow';
 import { CustomerForm, type CustomerFormData } from '@/components/features/customers/CustomerForm';
+import { ContactsPanel } from '@/components/features/contacts';
 
 const statusFilters = [
   { key: 'all', label: '全部' },
@@ -23,6 +24,7 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   const { data, isLoading } = useCustomers({
     page,
@@ -105,6 +107,7 @@ export default function CustomersPage() {
           customers={customers}
           search={search}
           onShowForm={() => setShowForm(true)}
+          onSelectCustomer={setSelectedCustomer}
         />
       </div>
 
@@ -146,6 +149,14 @@ export default function CustomersPage() {
           isSubmitting={createMutation.isPending}
         />
       )}
+
+      {/* Contacts Panel */}
+      {selectedCustomer && (
+        <ContactsPanel
+          customer={selectedCustomer}
+          onClose={() => setSelectedCustomer(null)}
+        />
+      )}
     </div>
   );
 }
@@ -157,9 +168,10 @@ interface CustomerListContentProps {
   readonly customers: readonly Customer[];
   readonly search: string;
   readonly onShowForm: () => void;
+  readonly onSelectCustomer: (customer: Customer) => void;
 }
 
-function CustomerListContent({ isLoading, customers, search, onShowForm }: CustomerListContentProps) {
+function CustomerListContent({ isLoading, customers, search, onShowForm, onSelectCustomer }: CustomerListContentProps) {
   if (isLoading) {
     return (
       <div className="space-y-0 divide-y divide-border-subtle">
@@ -192,7 +204,11 @@ function CustomerListContent({ isLoading, customers, search, onShowForm }: Custo
   return (
     <div className="divide-y divide-border-subtle">
       {customers.map((customer) => (
-        <CustomerRow key={customer.id} customer={customer} />
+        <CustomerRow
+          key={customer.id}
+          customer={customer}
+          onClick={() => onSelectCustomer(customer)}
+        />
       ))}
     </div>
   );
