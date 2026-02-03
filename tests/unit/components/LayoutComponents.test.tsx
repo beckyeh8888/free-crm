@@ -37,6 +37,7 @@ import { SidebarProvider, useSidebar } from '@/components/layout/Sidebar/Sidebar
 import { SidebarItem } from '@/components/layout/Sidebar/SidebarItem';
 import { Sidebar } from '@/components/layout/Sidebar/Sidebar';
 import { Header } from '@/components/layout/Header/Header';
+import { CommandPaletteProvider } from '@/components/CommandPalette';
 import type { LucideProps } from 'lucide-react';
 
 // Mock LucideIcon component for SidebarItem tests
@@ -64,7 +65,11 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 // Helper wrapper component
 function TestWrapper({ children }: { readonly children: ReactNode }) {
-  return <SidebarProvider>{children}</SidebarProvider>;
+  return (
+    <CommandPaletteProvider>
+      <SidebarProvider>{children}</SidebarProvider>
+    </CommandPaletteProvider>
+  );
 }
 
 // Component to test useSidebar hook

@@ -8,6 +8,8 @@
 import { usePathname } from 'next/navigation';
 import { Search, Bell, Menu } from 'lucide-react';
 import { useSidebar } from '../Sidebar';
+import { useCommandPalette } from '@/components/CommandPalette';
+import { usePlatform } from '@/hooks/usePlatform';
 
 // Page titles mapping
 const pageTitles: Record<string, string> = {
@@ -23,6 +25,8 @@ const pageTitles: Record<string, string> = {
 export function Header() {
   const pathname = usePathname();
   const { toggle, isCollapsed } = useSidebar();
+  const { open: openCommandPalette } = useCommandPalette();
+  const { modKey } = usePlatform();
 
   // Get current page title
   const getPageTitle = () => {
@@ -77,17 +81,18 @@ export function Header() {
         {/* Search / CMD+K Button */}
         <button
           type="button"
+          onClick={openCommandPalette}
           className="
             flex items-center gap-2 h-10 px-3 rounded-lg
             text-text-muted hover:bg-background-hover hover:text-text-secondary
             transition-colors duration-200
             focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background
           "
-          aria-label="搜尋 (Ctrl+K)"
+          aria-label={`搜尋 (${modKey}+K)`}
         >
           <Search className="w-4 h-4" />
           <span className="hidden sm:inline text-xs text-text-muted border border-border rounded px-1.5 py-0.5">
-            ⌘K
+            {modKey}K
           </span>
         </button>
 
