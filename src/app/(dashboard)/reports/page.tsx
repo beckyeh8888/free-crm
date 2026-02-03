@@ -60,7 +60,7 @@ export default function ReportsPage() {
 
       // Get the blob and create download link
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = globalThis.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
 
@@ -72,8 +72,8 @@ export default function ReportsPage() {
       link.download = filename;
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      link.remove();
+      globalThis.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export error:', error);
       alert('匯出報表失敗，請稍後再試');
