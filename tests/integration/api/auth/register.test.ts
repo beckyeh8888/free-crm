@@ -5,7 +5,6 @@
  * Updated for multi-tenant schema (Sprint 2)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
 import { POST } from '@/app/api/auth/register/route';
 import { createMockRequest, parseResponse } from '@tests/helpers/request-helpers';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';

@@ -94,7 +94,6 @@ export function DealForm({ deal, onSubmit, onClose, isSubmitting }: DealFormProp
               onChange={(e) => handleChange('title', e.target.value)}
               className="form-input"
               required
-              autoFocus
             />
           </label>
 

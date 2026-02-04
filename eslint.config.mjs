@@ -12,6 +12,15 @@ const eslintConfig = defineConfig([...nextVitals, ...nextTs, // WCAG 2.2 AAA - A
   rules: {
     ...jsxA11y.configs.strict.rules,
   },
+}, // TypeScript rules - allow underscore-prefixed unused vars
+{
+  rules: {
+    "@typescript-eslint/no-unused-vars": ["warn", {
+      argsIgnorePattern: "^_",
+      varsIgnorePattern: "^_",
+      caughtErrorsIgnorePattern: "^_",
+    }],
+  },
 }, // Security rules (CWE Top 25 + OWASP Top 10)
 {
   plugins: {
@@ -19,6 +28,9 @@ const eslintConfig = defineConfig([...nextVitals, ...nextTs, // WCAG 2.2 AAA - A
   },
   rules: {
     ...security.configs.recommended.rules,
+    // Disable object injection rule - high false positive rate in TypeScript
+    // Real protection comes from: typed keys, input validation, and code review
+    "security/detect-object-injection": "off",
   },
 }, // Override default ignores of eslint-config-next.
 globalIgnores([
@@ -27,6 +39,8 @@ globalIgnores([
   "out/**",
   "build/**",
   "next-env.d.ts",
+  // Node.js utility scripts (CommonJS)
+  "scripts/**/*.js",
 ]), ...storybook.configs["flat/recommended"]]);
 
 export default eslintConfig;

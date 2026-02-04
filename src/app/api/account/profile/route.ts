@@ -29,7 +29,7 @@ const updateProfileSchema = z.object({
 // GET /api/account/profile - Get user profile
 // ============================================
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     // 1. Authenticate
     const { session, error: authError } = await requireAuth();

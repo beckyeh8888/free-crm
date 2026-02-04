@@ -21,6 +21,7 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
 
   const performRegister = async () => {
+    // eslint-disable-next-line security/detect-possible-timing-attacks -- Client-side form validation, not cryptographic
     if (password !== confirmPassword) {
       setError('密碼不一致');
       return;

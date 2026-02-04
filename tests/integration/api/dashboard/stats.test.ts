@@ -3,7 +3,7 @@
  * GET /api/dashboard/stats
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { vi } from 'vitest';
 import { GET } from '@/app/api/dashboard/stats/route';
 import { parseResponse } from '@tests/helpers/request-helpers';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';

@@ -6,7 +6,7 @@
  * Updated for multi-tenant schema (Sprint 2)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { vi } from 'vitest';
 import { GET, POST } from '@/app/api/customers/[id]/contacts/route';
 import { PATCH, DELETE } from '@/app/api/customers/[id]/contacts/[contactId]/route';
 import { createMockRequest, parseResponse } from '@tests/helpers/request-helpers';

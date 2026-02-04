@@ -493,6 +493,69 @@ function AuditTab() {
     setPage(1);
   };
 
+  // Helper function to render log list content (avoids nested ternary)
+  function renderLogContent() {
+    if (isLoading) {
+      return (
+        <div className="divide-y divide-border-subtle">
+          {AUDIT_SKELETON_KEYS.map((key) => (
+            <div key={key} className="h-12 animate-pulse" />
+          ))}
+        </div>
+      );
+    }
+
+    if (logs.length > 0) {
+      return (
+        <div className="divide-y divide-border-subtle">
+          {logs.map((log) => {
+            const time = new Date(log.createdAt).toLocaleTimeString('zh-TW', {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            const date = new Date(log.createdAt).toLocaleDateString('zh-TW', {
+              month: 'short',
+              day: 'numeric',
+            });
+            const userName = log.user?.name || log.user?.email || '系統';
+            const initials = userName.slice(0, 2).toUpperCase();
+
+            return (
+              <div key={log.id} className="flex items-center gap-3 px-4 py-2.5 min-h-[48px]">
+                <div className="text-xs text-text-muted w-20 flex-shrink-0">
+                  <div>{date}</div>
+                  <div>{time}</div>
+                </div>
+                <div className="w-6 h-6 rounded-full bg-accent-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-[10px] font-medium text-white">{initials}</span>
+                </div>
+                <span className="text-sm text-text-secondary">
+                  {ACTION_LABELS[log.action] || log.action}
+                </span>
+                <span className="text-sm text-text-primary">
+                  {ENTITY_LABELS[log.entity] || log.entity}
+                </span>
+                {log.entityId && (
+                  <span className="text-xs text-text-muted truncate max-w-[100px]">
+                    #{log.entityId.slice(0, 8)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <div className="py-12 text-center">
+        <p className="text-sm text-text-muted">
+          {Object.values(filters).some(Boolean) ? '沒有符合篩選條件的記錄' : '尚無審計記錄'}
+        </p>
+      </div>
+    );
+  }
+
   if (isLoading && page === 1) {
     return (
       <div className="space-y-4">
@@ -528,57 +591,7 @@ function AuditTab() {
 
       {/* Log List */}
       <div className="bg-background-tertiary border border-border rounded-xl">
-        {isLoading ? (
-          <div className="divide-y divide-border-subtle">
-            {AUDIT_SKELETON_KEYS.map((key) => (
-              <div key={key} className="h-12 animate-pulse" />
-            ))}
-          </div>
-        ) : logs.length > 0 ? (
-          <div className="divide-y divide-border-subtle">
-            {logs.map((log) => {
-              const time = new Date(log.createdAt).toLocaleTimeString('zh-TW', {
-                hour: '2-digit',
-                minute: '2-digit',
-              });
-              const date = new Date(log.createdAt).toLocaleDateString('zh-TW', {
-                month: 'short',
-                day: 'numeric',
-              });
-              const userName = log.user?.name || log.user?.email || '系統';
-              const initials = userName.slice(0, 2).toUpperCase();
-
-              return (
-                <div key={log.id} className="flex items-center gap-3 px-4 py-2.5 min-h-[48px]">
-                  <div className="text-xs text-text-muted w-20 flex-shrink-0">
-                    <div>{date}</div>
-                    <div>{time}</div>
-                  </div>
-                  <div className="w-6 h-6 rounded-full bg-accent-600 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[10px] font-medium text-white">{initials}</span>
-                  </div>
-                  <span className="text-sm text-text-secondary">
-                    {ACTION_LABELS[log.action] || log.action}
-                  </span>
-                  <span className="text-sm text-text-primary">
-                    {ENTITY_LABELS[log.entity] || log.entity}
-                  </span>
-                  {log.entityId && (
-                    <span className="text-xs text-text-muted truncate max-w-[100px]">
-                      #{log.entityId.slice(0, 8)}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="py-12 text-center">
-            <p className="text-sm text-text-muted">
-              {Object.values(filters).some((v) => v) ? '沒有符合篩選條件的記錄' : '尚無審計記錄'}
-            </p>
-          </div>
-        )}
+        {renderLogContent()}
       </div>
 
       {/* Pagination */}

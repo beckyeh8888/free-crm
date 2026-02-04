@@ -5,9 +5,8 @@
  * Updated for multi-tenant schema (Sprint 2)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
-import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
+import { createTestContext } from '@tests/helpers/auth-helpers';
 import bcrypt from 'bcryptjs';
 
 // Import the authorize function by accessing the credentials provider
@@ -36,11 +35,9 @@ type AuthorizeFunction = (
 
 describe('NextAuth Credentials Login', () => {
   const testPassword = 'TestPass123!';
-  let hashedPassword: string;
 
   beforeEach(async () => {
     await clearDatabase();
-    hashedPassword = await bcrypt.hash(testPassword, 10);
   });
 
   describe('Successful Login', () => {

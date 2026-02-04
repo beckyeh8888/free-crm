@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 
 interface PlatformInfo {
   /** Whether the user is on macOS/iOS */
@@ -18,6 +18,25 @@ interface PlatformInfo {
   readonly modKeyLabel: string;
   /** Check if modifier key is pressed in a keyboard event */
   readonly isModKeyPressed: (e: KeyboardEvent) => boolean;
+}
+
+// Detect Mac platform
+function detectIsMac(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
+// For useSyncExternalStore - platform doesn't change so we use a no-op subscribe
+function subscribe() {
+  return () => {};
+}
+
+function getSnapshot(): boolean {
+  return detectIsMac();
+}
+
+function getServerSnapshot(): boolean {
+  return false; // Default to non-Mac for SSR
 }
 
 /**
@@ -36,20 +55,9 @@ interface PlatformInfo {
  * }
  * ```
  */
-// Detect Mac platform (runs once on module load, client-side only)
-function detectIsMac(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-}
-
 export function usePlatform(): PlatformInfo {
-  // Start with false for SSR, will update on client mount
-  const [isMac, setIsMac] = useState(false);
-
-  // Detect platform on mount (client-side only)
-  useEffect(() => {
-    setIsMac(detectIsMac());
-  }, []);
+  // Use useSyncExternalStore to safely read browser APIs
+  const isMac = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const isModKeyPressed = useCallback(
     (e: KeyboardEvent): boolean => {
@@ -58,12 +66,15 @@ export function usePlatform(): PlatformInfo {
     [isMac]
   );
 
-  return {
-    isMac,
-    modKey: isMac ? '⌘' : 'Ctrl',
-    modKeyLabel: isMac ? 'Cmd' : 'Ctrl',
-    isModKeyPressed,
-  };
+  return useMemo(
+    () => ({
+      isMac,
+      modKey: isMac ? '⌘' : 'Ctrl',
+      modKeyLabel: isMac ? 'Cmd' : 'Ctrl',
+      isModKeyPressed,
+    }),
+    [isMac, isModKeyPressed]
+  );
 }
 
 export type { PlatformInfo };

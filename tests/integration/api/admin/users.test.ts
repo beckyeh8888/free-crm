@@ -7,12 +7,38 @@
  * ISO 27001 A.9.2.2 (User Access Provisioning)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { vi } from 'vitest';
 import { GET, POST } from '@/app/api/admin/users/route';
 import { createMockRequest, parseResponse } from '@tests/helpers/request-helpers';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
 import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
 import { PERMISSIONS } from '@/lib/permissions';
+
+// Response types for admin users API
+interface UserData {
+  email: string;
+  name: string | null;
+  memberStatus: string;
+  isInvite?: boolean;
+  has2FA?: boolean;
+  role: { id: string; name: string };
+}
+
+interface UserListResponse {
+  success: boolean;
+  data: UserData[];
+  pagination: { page: number; limit: number; total: number };
+}
+
+interface UserCreateResponse {
+  success: boolean;
+  data: UserData;
+}
+
+interface ErrorResponse {
+  success: boolean;
+  error: { code: string; message: string };
+}
 
 // Mock next-auth
 vi.mock('next-auth', () => ({
@@ -85,7 +111,7 @@ describe('Admin Users API', () => {
 
       const request = createMockRequest('/api/admin/users');
       const response = await GET(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserListResponse>(response);
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -107,10 +133,10 @@ describe('Admin Users API', () => {
 
       const request = createMockRequest('/api/admin/users');
       const response = await GET(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserListResponse>(response);
 
       // Should not include users from other organization
-      const emails = data.data.map((u: { email: string }) => u.email);
+      const emails = data.data.map((u) => u.email);
       expect(emails).not.toContain(otherCtx.user.email);
     });
 
@@ -119,7 +145,7 @@ describe('Admin Users API', () => {
 
       const request = createMockRequest('/api/admin/users?page=1&limit=10');
       const response = await GET(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserListResponse>(response);
 
       expect(response.status).toBe(200);
       expect(data.pagination).toBeDefined();
@@ -132,7 +158,7 @@ describe('Admin Users API', () => {
 
       const request = createMockRequest('/api/admin/users?search=admin');
       const response = await GET(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserListResponse>(response);
 
       expect(response.status).toBe(200);
       expect(data.data.length).toBeGreaterThanOrEqual(1);
@@ -143,10 +169,10 @@ describe('Admin Users API', () => {
 
       const request = createMockRequest('/api/admin/users?status=active');
       const response = await GET(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserListResponse>(response);
 
       expect(response.status).toBe(200);
-      data.data.forEach((user: { memberStatus: string }) => {
+      data.data.forEach((user) => {
         expect(user.memberStatus).toBe('active');
       });
     });
@@ -158,10 +184,10 @@ describe('Admin Users API', () => {
         `/api/admin/users?roleId=${adminCtx.role.id}`
       );
       const response = await GET(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserListResponse>(response);
 
       expect(response.status).toBe(200);
-      data.data.forEach((user: { role: { id: string } }) => {
+      data.data.forEach((user) => {
         expect(user.role.id).toBe(adminCtx.role.id);
       });
     });
@@ -171,10 +197,10 @@ describe('Admin Users API', () => {
 
       const request = createMockRequest('/api/admin/users');
       const response = await GET(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserListResponse>(response);
 
       expect(response.status).toBe(200);
-      data.data.forEach((user: { has2FA: boolean }) => {
+      data.data.forEach((user) => {
         expect(typeof user.has2FA).toBe('boolean');
       });
     });
@@ -231,7 +257,7 @@ describe('Admin Users API', () => {
         },
       });
       const response = await POST(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserCreateResponse>(response);
 
       expect(response.status).toBe(201);
       expect(data.success).toBe(true);
@@ -253,7 +279,7 @@ describe('Admin Users API', () => {
         },
       });
       const response = await POST(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<UserCreateResponse>(response);
 
       expect(response.status).toBe(201);
       expect(data.data.isInvite).toBe(false);
@@ -271,7 +297,7 @@ describe('Admin Users API', () => {
         },
       });
       const response = await POST(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<ErrorResponse>(response);
 
       expect(response.status).toBe(400);
       expect(data.success).toBe(false);
@@ -290,7 +316,7 @@ describe('Admin Users API', () => {
         },
       });
       const response = await POST(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<ErrorResponse>(response);
 
       expect(response.status).toBe(400);
       expect(data.success).toBe(false);
@@ -310,7 +336,7 @@ describe('Admin Users API', () => {
         },
       });
       const response = await POST(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<ErrorResponse>(response);
 
       expect(response.status).toBe(400);
       expect(data.success).toBe(false);
@@ -328,7 +354,7 @@ describe('Admin Users API', () => {
         },
       });
       const response = await POST(request);
-      const data = await parseResponse(response);
+      const data = await parseResponse<ErrorResponse>(response);
 
       expect(response.status).toBe(404);
       expect(data.error.message).toContain('角色');
@@ -358,7 +384,7 @@ describe('Admin Users API', () => {
         },
       });
       const response = await POST(request2);
-      const data = await parseResponse(response);
+      const data = await parseResponse<ErrorResponse>(response);
 
       expect(response.status).toBe(409);
       expect(data.error.message).toContain('已是組織成員');

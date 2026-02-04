@@ -2,7 +2,7 @@
  * LoadingState Stories
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { LoadingState, Skeleton } from './LoadingState';
 
 const meta: Meta<typeof LoadingState> = {

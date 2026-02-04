@@ -88,10 +88,15 @@ test.describe('Deal Pipeline', () => {
     await page.getByLabel(/標題|Title/i).fill(TEST_DEAL.title);
     await page.getByLabel(/金額|Value|Amount/i).fill(TEST_DEAL.value);
 
-    // Select customer
+    // Select customer - use text match to find the option, then get its value
     const customerSelect = page.getByLabel(/客戶|Customer/i);
     if (await customerSelect.isVisible()) {
-      await customerSelect.selectOption({ label: new RegExp(TEST_CUSTOMER.name, 'i') });
+      // Find option that matches customer name and select it
+      const option = customerSelect.locator(`option:has-text("${TEST_CUSTOMER.name}")`);
+      const optionValue = await option.getAttribute('value');
+      if (optionValue) {
+        await customerSelect.selectOption(optionValue);
+      }
     }
 
     // Submit form

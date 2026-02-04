@@ -119,7 +119,6 @@ export function ContactForm({
               onChange={(e) => handleChange('name', e.target.value)}
               className="form-input"
               required
-              autoFocus
             />
           </FormField>
 

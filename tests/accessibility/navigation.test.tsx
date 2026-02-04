@@ -214,6 +214,7 @@ describe('Navigation Accessibility - ARIA Landmarks', () => {
       <div>
         <header>
           <nav aria-label="主選單">
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Testing semantic HTML, not Next.js routing */}
             <a href="/">首頁</a>
           </nav>
         </header>

@@ -41,10 +41,9 @@ import { CommandPaletteProvider } from '@/components/CommandPalette';
 import type { LucideProps } from 'lucide-react';
 
 // Mock LucideIcon component for SidebarItem tests
-const MockIcon = forwardRef<SVGSVGElement, LucideProps>((props, ref) => (
-  <svg ref={ref} data-testid="icon" {...props}><path d="M0 0" /></svg>
-)) as unknown as import('lucide-react').LucideIcon;
-MockIcon.displayName = 'MockIcon';
+const MockIcon = forwardRef<SVGSVGElement, LucideProps>(function MockIcon(props, ref) {
+  return <svg ref={ref} data-testid="icon" {...props}><path d="M0 0" /></svg>;
+}) as unknown as import('lucide-react').LucideIcon;
 
 // Mock localStorage with proper reset functionality
 let localStorageStore: Record<string, string> = {};
@@ -425,12 +424,7 @@ describe('Sidebar', () => {
         fireEvent.click(expandBtn);
       }
 
-      // Now check for user info (may or may not be visible depending on state)
-      // The component conditionally renders based on isCollapsed
-      const userName = screen.queryByText('Test User');
-      const userEmail = screen.queryByText('test@example.com');
-
-      // At least the avatar should be present
+      // At least the avatar should be present (user info visibility depends on isCollapsed state)
       expect(screen.getByText('T')).toBeInTheDocument();
     });
 
@@ -513,8 +507,8 @@ describe('Sidebar', () => {
       );
 
       // Find current toggle button
-      let collapseBtn = screen.queryByRole('button', { name: '收合側邊欄' });
-      let expandBtn = screen.queryByRole('button', { name: '展開側邊欄' });
+      const collapseBtn = screen.queryByRole('button', { name: '收合側邊欄' });
+      const expandBtn = screen.queryByRole('button', { name: '展開側邊欄' });
       const currentBtn = collapseBtn || expandBtn;
       expect(currentBtn).toBeInTheDocument();
 
@@ -681,8 +675,8 @@ describe('Header', () => {
       );
 
       // Find current button
-      let collapseBtn = screen.queryByRole('button', { name: '收合選單' });
-      let expandBtn = screen.queryByRole('button', { name: '展開選單' });
+      const collapseBtn = screen.queryByRole('button', { name: '收合選單' });
+      const expandBtn = screen.queryByRole('button', { name: '展開選單' });
       const currentBtn = collapseBtn || expandBtn;
       expect(currentBtn).toBeInTheDocument();
 

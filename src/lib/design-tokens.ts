@@ -142,12 +142,62 @@ export const navItems = [
   { key: 'dashboard', label: '儀表板', href: '/dashboard', icon: 'LayoutDashboard' },
   { key: 'customers', label: '客戶', href: '/customers', icon: 'Users' },
   { key: 'deals', label: '商機', href: '/deals', icon: 'Handshake' },
+  { key: 'calendar', label: '行事曆', href: '/calendar', icon: 'Calendar' },
   { key: 'documents', label: '文件', href: '/documents', icon: 'FileText' },
   { key: 'activities', label: '活動', href: '/activities', icon: 'Activity' },
   { key: 'reports', label: '報表', href: '/reports', icon: 'BarChart3' },
   { key: 'settings', label: '設定', href: '/settings', icon: 'Settings' },
   { key: 'admin', label: '管理', href: '/admin', icon: 'Shield' },
 ] as const;
+
+// Task type colors for calendar and gantt
+export const taskTypeColors = {
+  task: '#3B82F6',      // 藍
+  call: '#22C55E',      // 綠
+  meeting: '#8B5CF6',   // 紫
+  email: '#F97316',     // 橙
+  follow_up: '#06B6D4', // 青
+  milestone: '#EC4899', // 粉
+} as const;
+
+export const taskTypeLabels: Record<string, string> = {
+  task: '任務',
+  call: '電話',
+  meeting: '會議',
+  email: '郵件',
+  follow_up: '追蹤',
+  milestone: '里程碑',
+};
+
+// Task priority colors
+export const taskPriorityColors = {
+  low: '#6B7280',       // 灰
+  medium: '#3B82F6',    // 藍
+  high: '#F97316',      // 橙
+  urgent: '#EF4444',    // 紅
+} as const;
+
+export const taskPriorityLabels: Record<string, string> = {
+  low: '低',
+  medium: '中',
+  high: '高',
+  urgent: '緊急',
+};
+
+// Task status colors
+export const taskStatusColors = {
+  pending: '#6B7280',      // 灰
+  in_progress: '#3B82F6',  // 藍
+  completed: '#22C55E',    // 綠
+  cancelled: '#EF4444',    // 紅
+} as const;
+
+export const taskStatusLabels: Record<string, string> = {
+  pending: '待處理',
+  in_progress: '進行中',
+  completed: '已完成',
+  cancelled: '已取消',
+};
 
 export type NavItem = (typeof navItems)[number];
 export type NavKey = NavItem['key'];

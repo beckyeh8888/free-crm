@@ -100,7 +100,6 @@ export function InviteUserModal({ onClose, onSuccess }: InviteUserModalProps) {
               className="form-input w-full"
               placeholder="user@example.com"
               required
-              autoFocus
             />
           </div>
 

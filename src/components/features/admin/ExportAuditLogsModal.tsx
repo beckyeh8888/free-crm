@@ -51,7 +51,6 @@ export function ExportAuditLogsModal({ filters, onClose }: ExportAuditLogsModalP
       {/* Modal */}
       <dialog
         open
-        role="dialog"
         aria-labelledby="export-title"
         className="relative w-full max-w-md bg-background-tertiary border border-border rounded-xl shadow-xl p-0"
       >
@@ -78,11 +77,11 @@ export function ExportAuditLogsModal({ filters, onClose }: ExportAuditLogsModalP
         {/* Content */}
         <div className="p-5 space-y-5">
           {/* Format Selection */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-3">
+          <fieldset>
+            <legend className="block text-sm font-medium text-text-secondary mb-3">
               匯出格式
-            </label>
-            <div className="grid grid-cols-2 gap-3">
+            </legend>
+            <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="匯出格式選擇">
               <button
                 type="button"
                 onClick={() => setFormat('csv')}
@@ -121,7 +120,7 @@ export function ExportAuditLogsModal({ filters, onClose }: ExportAuditLogsModalP
                 </div>
               </button>
             </div>
-          </div>
+          </fieldset>
 
           {/* Record Limit */}
           <div>
@@ -143,7 +142,7 @@ export function ExportAuditLogsModal({ filters, onClose }: ExportAuditLogsModalP
           </div>
 
           {/* Active Filters Info */}
-          {Object.values(filters).some((v) => v) && (
+          {Object.values(filters).some(Boolean) && (
             <div className="bg-background-secondary rounded-lg p-3">
               <p className="text-xs text-text-muted mb-1">將套用目前的篩選條件：</p>
               <ul className="text-xs text-text-secondary space-y-0.5">

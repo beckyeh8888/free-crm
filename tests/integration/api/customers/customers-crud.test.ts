@@ -6,7 +6,7 @@
  * Updated for multi-tenant schema (Sprint 2)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { vi } from 'vitest';
 import { GET, POST } from '@/app/api/customers/route';
 import {
   GET as GET_BY_ID,

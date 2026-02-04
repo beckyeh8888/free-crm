@@ -5,7 +5,6 @@
  * Updated for multi-tenant schema (Sprint 2)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
 import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
 import { createCustomer } from '@tests/factories/customer.factory';

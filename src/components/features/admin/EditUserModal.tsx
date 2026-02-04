@@ -5,7 +5,7 @@
  * WCAG 2.2 AAA Compliant
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useAdminRoles } from '@/hooks/useAdminRoles';
 import { useUpdateUser, type AdminUser, type UpdateUserData } from '@/hooks/useAdminUsers';
@@ -16,7 +16,8 @@ interface EditUserModalProps {
   readonly onSuccess?: () => void;
 }
 
-export function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
+// Inner component with form state - will remount when user.memberId changes
+function EditUserModalForm({ user, onClose, onSuccess }: EditUserModalProps) {
   const [formData, setFormData] = useState<UpdateUserData>({
     name: user.name ?? '',
     roleId: user.role.id,
@@ -28,15 +29,6 @@ export function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) 
   const updateMutation = useUpdateUser();
 
   const roles = rolesData?.data ?? [];
-
-  // Update form when user changes
-  useEffect(() => {
-    setFormData({
-      name: user.name ?? '',
-      roleId: user.role.id,
-      status: user.memberStatus as 'active' | 'invited' | 'suspended',
-    });
-  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -180,5 +172,17 @@ export function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) 
         </form>
       </dialog>
     </div>
+  );
+}
+
+// Main component - uses key prop to reset form state when user changes
+export function EditUserModal({ user, onClose, onSuccess }: EditUserModalProps) {
+  return (
+    <EditUserModalForm
+      key={user.memberId}
+      user={user}
+      onClose={onClose}
+      onSuccess={onSuccess}
+    />
   );
 }

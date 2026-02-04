@@ -4,7 +4,6 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { DEFAULT_PERMISSIONS } from '@/lib/permissions';
 
 export interface OrganizationFactoryData {
   name?: string;

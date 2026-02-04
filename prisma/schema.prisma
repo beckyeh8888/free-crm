@@ -31,6 +31,8 @@ model Organization {
   customers   Customer[]
   documents   Document[]
   systemSettings SystemSetting[]
+  projects    Project[]
+  tasks       Task[]
 
   @@index([slug])
 }
@@ -129,6 +131,10 @@ model User {
   assignedCustomers Customer[] @relation("CustomerAssignedTo")
   createdDeals      Deal[]     @relation("DealCreatedBy")
   assignedDeals     Deal[]     @relation("DealAssignedTo")
+
+  // Task relations
+  createdTasks      Task[]     @relation("TaskCreatedBy")
+  assignedTasks     Task[]     @relation("TaskAssignedTo")
 
   @@index([email])
   @@index([status])
@@ -236,6 +242,8 @@ model Customer {
   contacts       Contact[]
   documents      Document[]
   deals          Deal[]
+  projects       Project[]
+  tasks          Task[]
 
   @@index([organizationId])
   @@index([createdById])
@@ -258,6 +266,7 @@ model Contact {
   // Relations
   customerId  String
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tasks       Task[]
 
   @@index([customerId])
   @@index([email])
@@ -285,6 +294,9 @@ model Deal {
   createdBy    User?    @relation("DealCreatedBy", fields: [createdById], references: [id])
   assignedToId String?
   assignedTo   User?    @relation("DealAssignedTo", fields: [assignedToId], references: [id])
+
+  // Task relation
+  tasks        Task[]
 
   @@index([customerId])
   @@index([stage])
@@ -356,6 +368,114 @@ model SystemSetting {
 
   @@unique([organizationId, key])
   @@index([organizationId])
+}
+
+// ============================================
+// Project & Task Management (Sprint 5)
+// ============================================
+
+model Project {
+  id             String    @id @default(cuid())
+  name           String
+  description    String?
+  status         String    @default("active") // active, completed, on_hold, cancelled
+  startDate      DateTime?
+  endDate        DateTime?
+  color          String?   // Gantt chart color (e.g., #3B82F6)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Relations
+  customerId     String?
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  tasks          Task[]
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model Task {
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  type           String    @default("task") // task, call, meeting, email, follow_up, milestone
+  priority       String    @default("medium") // low, medium, high, urgent
+  status         String    @default("pending") // pending, in_progress, completed, cancelled
+
+  // Time fields (for Gantt chart)
+  startDate      DateTime?
+  dueDate        DateTime?
+  dueTime        String?   // HH:mm format
+  completedAt    DateTime?
+
+  // Calendar fields
+  isAllDay       Boolean   @default(false)
+  reminderAt     DateTime?
+  reminderSent   Boolean   @default(false)
+
+  // Gantt chart progress
+  progress       Int       @default(0) // 0-100%
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Multi-tenant
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Ownership
+  createdById    String
+  createdBy      User     @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  assignedToId   String?
+  assignedTo     User?    @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+
+  // Relations to CRM entities
+  projectId      String?
+  project        Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  customerId     String?
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  dealId         String?
+  deal           Deal?     @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contactId      String?
+  contact        Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  // Task dependencies (Gantt chart connections)
+  dependencies   TaskDependency[] @relation("DependentTask")
+  dependents     TaskDependency[] @relation("PrerequisiteTask")
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([assignedToId])
+  @@index([customerId])
+  @@index([dealId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model TaskDependency {
+  id               String   @id @default(cuid())
+
+  // Prerequisite task (must complete first)
+  prerequisiteId   String
+  prerequisite     Task     @relation("PrerequisiteTask", fields: [prerequisiteId], references: [id], onDelete: Cascade)
+
+  // Dependent task (waiting for prerequisite)
+  dependentId      String
+  dependent        Task     @relation("DependentTask", fields: [dependentId], references: [id], onDelete: Cascade)
+
+  // Dependency type
+  type             String   @default("finish_to_start") // finish_to_start, start_to_start, finish_to_finish, start_to_finish
+
+  createdAt        DateTime @default(now())
+
+  @@unique([prerequisiteId, dependentId])
+  @@index([prerequisiteId])
+  @@index([dependentId])
 }
 
 // ============================================

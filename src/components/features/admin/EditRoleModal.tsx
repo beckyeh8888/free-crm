@@ -5,7 +5,7 @@
  * WCAG 2.2 AAA Compliant
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { X, Loader2, Shield } from 'lucide-react';
 import { usePermissions, useUpdateRole, type AdminRole } from '@/hooks/useAdminRoles';
 import { PermissionGroup } from './PermissionGroup';
@@ -17,7 +17,8 @@ interface EditRoleModalProps {
   readonly onSuccess?: () => void;
 }
 
-export function EditRoleModal({ role, onClose, onSuccess }: EditRoleModalProps) {
+// Inner component with form state - will remount when role.id changes
+function EditRoleModalForm({ role, onClose, onSuccess }: EditRoleModalProps) {
   const [name, setName] = useState(role.name);
   const [description, setDescription] = useState(role.description || '');
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(() => {
@@ -29,16 +30,6 @@ export function EditRoleModal({ role, onClose, onSuccess }: EditRoleModalProps) 
 
   const { data: permissionsData, isLoading: permissionsLoading } = usePermissions();
   const updateMutation = useUpdateRole();
-
-  // Reset form when role changes
-  useEffect(() => {
-    setName(role.name);
-    setDescription(role.description || '');
-    setIsDefault(role.isDefault);
-    const perms = new Set<string>();
-    role.permissions?.forEach((p) => perms.add(p.code));
-    setSelectedPermissions(perms);
-  }, [role]);
 
   // Group permissions by category
   const permissionGroups = useMemo(() => {
@@ -118,7 +109,6 @@ export function EditRoleModal({ role, onClose, onSuccess }: EditRoleModalProps) 
       {/* Modal */}
       <dialog
         open
-        role="dialog"
         aria-labelledby="edit-role-title"
         className="relative w-full max-w-2xl max-h-[90vh] bg-background-tertiary border border-border rounded-xl shadow-xl p-0 flex flex-col"
       >
@@ -272,5 +262,17 @@ export function EditRoleModal({ role, onClose, onSuccess }: EditRoleModalProps) 
         </form>
       </dialog>
     </div>
+  );
+}
+
+// Main component - uses key prop to reset form state when role changes
+export function EditRoleModal({ role, onClose, onSuccess }: EditRoleModalProps) {
+  return (
+    <EditRoleModalForm
+      key={role.id}
+      role={role}
+      onClose={onClose}
+      onSuccess={onSuccess}
+    />
   );
 }

@@ -36,7 +36,7 @@ const regenerateSchema = z.object({
 // GET /api/account/2fa/backup-codes - Get backup code info
 // ============================================
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     // 1. Authenticate
     const { session, error: authError } = await requireAuth();

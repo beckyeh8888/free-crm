@@ -85,14 +85,14 @@ export function ContactsPanel({ customer, onClose }: ContactsPanelProps) {
       />
 
       {/* Panel */}
-      <aside
+      <dialog
+        open
         className="
-          fixed right-0 top-0 h-full w-full max-w-md
+          fixed right-0 top-0 h-full w-full max-w-md m-0
           bg-background border-l border-border
           z-50 flex flex-col
           animate-slide-in-right
         "
-        role="dialog"
         aria-label={`${customer.name} 的聯絡人`}
       >
         {/* Header */}
@@ -151,7 +151,7 @@ export function ContactsPanel({ customer, onClose }: ContactsPanelProps) {
             共 {contacts.length} 位聯絡人
           </p>
         </footer>
-      </aside>
+      </dialog>
 
       {/* Create/Edit Modal */}
       {(modalState.type === 'create' || modalState.type === 'edit') && (

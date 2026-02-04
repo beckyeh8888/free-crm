@@ -93,7 +93,6 @@ export function CustomerForm({ customer, onSubmit, onClose, isSubmitting }: Cust
               onChange={(e) => handleChange('name', e.target.value)}
               className="form-input"
               required
-              autoFocus
             />
           </FormField>
 

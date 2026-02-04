@@ -142,7 +142,7 @@ async function resolveOrganizationId(
   userId: string,
   bodyOrgId?: string
 ): Promise<string | null> {
-  let orgId = bodyOrgId || getOrganizationId(request);
+  const orgId = bodyOrgId || getOrganizationId(request);
   if (orgId) return orgId;
 
   const defaultOrg = await getUserDefaultOrganization(userId);

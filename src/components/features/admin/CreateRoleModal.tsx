@@ -101,7 +101,6 @@ export function CreateRoleModal({ onClose, onSuccess }: CreateRoleModalProps) {
       {/* Modal */}
       <dialog
         open
-        role="dialog"
         aria-labelledby="create-role-title"
         className="relative w-full max-w-2xl max-h-[90vh] bg-background-tertiary border border-border rounded-xl shadow-xl p-0 flex flex-col"
       >

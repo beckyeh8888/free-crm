@@ -119,6 +119,13 @@ export async function createTestContext(overrides: {
     PERMISSIONS.CONTACTS_CREATE,
     PERMISSIONS.CONTACTS_UPDATE,
     PERMISSIONS.CONTACTS_DELETE,
+    // Sprint 5: Project & Task permissions
+    PERMISSIONS.PROJECTS_READ,
+    PERMISSIONS.PROJECTS_WRITE,
+    PERMISSIONS.TASKS_READ,
+    PERMISSIONS.TASKS_WRITE,
+    PERMISSIONS.TASKS_ASSIGN,
+    PERMISSIONS.TASKS_MANAGE,
   ];
 
   const role = await prisma.role.create({

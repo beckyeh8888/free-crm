@@ -43,7 +43,7 @@ export function createMockRequest(
     init.body = JSON.stringify(body);
   }
 
-  return new NextRequest(urlObj, init);
+  return new NextRequest(urlObj, init as ConstructorParameters<typeof NextRequest>[1]);
 }
 
 /**

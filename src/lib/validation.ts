@@ -209,3 +209,118 @@ export const documentFilterSchema = z.object({
 export type CreateDocument = z.infer<typeof createDocumentSchema>;
 export type UpdateDocument = z.infer<typeof updateDocumentSchema>;
 export type DocumentType = z.infer<typeof documentTypeEnum>;
+
+// ============================================
+// Project Schemas (Sprint 5)
+// ============================================
+
+export const projectStatusEnum = z.enum(['active', 'completed', 'on_hold', 'cancelled']);
+
+export const createProjectSchema = z.object({
+  name: z.string().min(1, '請輸入專案名稱').max(200),
+  description: z.string().max(2000).optional(),
+  status: projectStatusEnum.default('active'),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  customerId: z.cuid().optional().nullable(),
+  organizationId: z.cuid().optional(),
+});
+
+export const updateProjectSchema = createProjectSchema.partial();
+
+export const projectFilterSchema = z.object({
+  search: z.string().optional(),
+  status: projectStatusEnum.optional(),
+  customerId: z.cuid().optional(),
+});
+
+export type CreateProject = z.infer<typeof createProjectSchema>;
+export type UpdateProject = z.infer<typeof updateProjectSchema>;
+export type ProjectStatus = z.infer<typeof projectStatusEnum>;
+
+// ============================================
+// Task Schemas (Sprint 5)
+// ============================================
+
+export const taskTypeEnum = z.enum(['task', 'call', 'meeting', 'email', 'follow_up', 'milestone']);
+export const taskPriorityEnum = z.enum(['low', 'medium', 'high', 'urgent']);
+export const taskStatusEnum = z.enum(['pending', 'in_progress', 'completed', 'cancelled']);
+
+export const createTaskSchema = z.object({
+  title: z.string().min(1, '請輸入任務標題').max(200),
+  description: z.string().max(2000).optional(),
+  type: taskTypeEnum.default('task'),
+  priority: taskPriorityEnum.default('medium'),
+  status: taskStatusEnum.default('pending'),
+  startDate: z.string().datetime().optional(),
+  dueDate: z.string().datetime().optional(),
+  dueTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+  isAllDay: z.boolean().default(false),
+  reminderAt: z.string().datetime().optional(),
+  progress: z.number().min(0).max(100).default(0),
+  assignedToId: z.cuid().optional().nullable(),
+  projectId: z.cuid().optional().nullable(),
+  customerId: z.cuid().optional().nullable(),
+  dealId: z.cuid().optional().nullable(),
+  contactId: z.cuid().optional().nullable(),
+  organizationId: z.cuid().optional(),
+});
+
+export const updateTaskSchema = createTaskSchema.partial();
+
+export const taskFilterSchema = z.object({
+  search: z.string().optional(),
+  status: taskStatusEnum.optional(),
+  priority: taskPriorityEnum.optional(),
+  type: taskTypeEnum.optional(),
+  projectId: z.cuid().optional(),
+  customerId: z.cuid().optional(),
+  dealId: z.cuid().optional(),
+  assignedToId: z.cuid().optional(),
+  dueDateFrom: z.string().datetime().optional(),
+  dueDateTo: z.string().datetime().optional(),
+  startDateFrom: z.string().datetime().optional(),
+  startDateTo: z.string().datetime().optional(),
+});
+
+export const calendarQuerySchema = z.object({
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+  type: taskTypeEnum.optional(),
+});
+
+export const ganttQuerySchema = z.object({
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+  projectId: z.cuid().optional(),
+  customerId: z.cuid().optional(),
+  dealId: z.cuid().optional(),
+  assignedToId: z.cuid().optional(),
+  includeDependencies: z.coerce.boolean().default(true),
+});
+
+export type CreateTask = z.infer<typeof createTaskSchema>;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
+export type TaskType = z.infer<typeof taskTypeEnum>;
+export type TaskPriority = z.infer<typeof taskPriorityEnum>;
+export type TaskStatus = z.infer<typeof taskStatusEnum>;
+
+// ============================================
+// Task Dependency Schemas (Sprint 5)
+// ============================================
+
+export const dependencyTypeEnum = z.enum([
+  'finish_to_start',
+  'start_to_start',
+  'finish_to_finish',
+  'start_to_finish',
+]);
+
+export const createDependencySchema = z.object({
+  prerequisiteId: z.cuid({ message: '無效的前置任務 ID' }),
+  type: dependencyTypeEnum.default('finish_to_start'),
+});
+
+export type CreateDependency = z.infer<typeof createDependencySchema>;
+export type DependencyType = z.infer<typeof dependencyTypeEnum>;

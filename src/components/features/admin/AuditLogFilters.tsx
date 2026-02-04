@@ -108,11 +108,12 @@ export function AuditLogFilters({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Date Range */}
             <div>
-              <label className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
+              <label htmlFor="audit-start-date" className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
                 <Calendar className="w-3.5 h-3.5" />
                 開始日期
               </label>
               <input
+                id="audit-start-date"
                 type="date"
                 value={filters.startDate || ''}
                 onChange={(e) => handleChange('startDate', e.target.value)}
@@ -121,11 +122,12 @@ export function AuditLogFilters({
             </div>
 
             <div>
-              <label className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
+              <label htmlFor="audit-end-date" className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
                 <Calendar className="w-3.5 h-3.5" />
                 結束日期
               </label>
               <input
+                id="audit-end-date"
                 type="date"
                 value={filters.endDate || ''}
                 onChange={(e) => handleChange('endDate', e.target.value)}
@@ -135,11 +137,12 @@ export function AuditLogFilters({
 
             {/* Action Filter */}
             <div>
-              <label className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
+              <label htmlFor="audit-action-filter" className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
                 <Activity className="w-3.5 h-3.5" />
                 操作類型
               </label>
               <select
+                id="audit-action-filter"
                 value={filters.action || ''}
                 onChange={(e) => handleChange('action', e.target.value)}
                 className="form-input w-full text-sm"
@@ -155,11 +158,12 @@ export function AuditLogFilters({
 
             {/* Entity Filter */}
             <div>
-              <label className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
+              <label htmlFor="audit-entity-filter" className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
                 <FileText className="w-3.5 h-3.5" />
                 實體類型
               </label>
               <select
+                id="audit-entity-filter"
                 value={filters.entity || ''}
                 onChange={(e) => handleChange('entity', e.target.value)}
                 className="form-input w-full text-sm"
@@ -177,11 +181,12 @@ export function AuditLogFilters({
           {/* User Filter */}
           {filterOptions?.users && filterOptions.users.length > 0 && (
             <div className="max-w-xs">
-              <label className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
+              <label htmlFor="audit-user-filter" className="flex items-center gap-1.5 text-xs text-text-muted mb-1.5">
                 <User className="w-3.5 h-3.5" />
                 用戶
               </label>
               <select
+                id="audit-user-filter"
                 value={filters.userId || ''}
                 onChange={(e) => handleChange('userId', e.target.value)}
                 className="form-input w-full text-sm"

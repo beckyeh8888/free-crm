@@ -2,7 +2,7 @@
  * DataTable Stories
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { fn, expect, userEvent, within } from '@storybook/test';
 import { DataTable, Column } from './DataTable';
 import { Button } from '../Button';

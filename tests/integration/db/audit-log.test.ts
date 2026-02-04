@@ -5,7 +5,7 @@
  * Updated for multi-tenant schema (Sprint 2)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { vi } from 'vitest';
 import { clearDatabase, prisma } from '@tests/helpers/test-db';
 import { createTestContext, type TestContext } from '@tests/helpers/auth-helpers';
 import { createCustomer } from '@tests/factories/customer.factory';
@@ -327,12 +327,7 @@ describe('Audit Log', () => {
         where: { action: 'update' },
       });
 
-      const readLogs = await prisma.auditLog.findMany({
-        where: { action: 'read' },
-      });
-
       expect(updateLogs.length).toBeGreaterThan(0);
-      // read logs may or may not exist depending on what operations were performed
     });
 
     it('should be able to query by date range', async () => {

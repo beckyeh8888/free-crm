@@ -19,7 +19,8 @@ const ALGORITHM = 'SHA1';
 const DIGITS = 6;
 const PERIOD = 30; // seconds
 const BACKUP_CODE_COUNT = 10;
-const BACKUP_CODE_LENGTH = 8;
+// Note: Backup code format is "XXXX-XXXX" (8 hex chars total)
+const _BACKUP_CODE_LENGTH = 8;
 
 // ============================================
 // Types

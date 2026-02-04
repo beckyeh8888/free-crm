@@ -14,7 +14,6 @@ import {
   getPermissionsByCategory,
   isAdminPermission,
   getDefaultRole,
-  PermissionCode,
 } from '@/lib/permissions';
 
 describe('PERMISSIONS', () => {

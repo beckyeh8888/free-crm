@@ -38,6 +38,16 @@ export const PERMISSIONS = {
   DOCUMENTS_DELETE: 'documents:delete',
   DOCUMENTS_ANALYZE: 'documents:analyze',
 
+  // Project Permissions
+  PROJECTS_READ: 'projects:read',
+  PROJECTS_WRITE: 'projects:write',
+
+  // Task Permissions
+  TASKS_READ: 'tasks:read',
+  TASKS_WRITE: 'tasks:write',
+  TASKS_ASSIGN: 'tasks:assign',
+  TASKS_MANAGE: 'tasks:manage',
+
   // Report Permissions
   REPORTS_VIEW: 'reports:view',
   REPORTS_EXPORT: 'reports:export',
@@ -101,6 +111,16 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { code: PERMISSIONS.DOCUMENTS_DELETE, name: '刪除文件', category: 'documents', description: '刪除文件' },
   { code: PERMISSIONS.DOCUMENTS_ANALYZE, name: 'AI 分析文件', category: 'documents', description: '使用 AI 分析文件內容' },
 
+  // Project Permissions
+  { code: PERMISSIONS.PROJECTS_READ, name: '檢視專案', category: 'projects', description: '查看專案列表和詳情' },
+  { code: PERMISSIONS.PROJECTS_WRITE, name: '編輯專案', category: 'projects', description: '新增、編輯、刪除專案' },
+
+  // Task Permissions
+  { code: PERMISSIONS.TASKS_READ, name: '檢視任務', category: 'tasks', description: '查看任務列表和行事曆' },
+  { code: PERMISSIONS.TASKS_WRITE, name: '編輯任務', category: 'tasks', description: '新增、編輯、刪除任務' },
+  { code: PERMISSIONS.TASKS_ASSIGN, name: '指派任務', category: 'tasks', description: '將任務指派給其他成員' },
+  { code: PERMISSIONS.TASKS_MANAGE, name: '管理所有任務', category: 'tasks', description: '管理組織內所有成員的任務' },
+
   // Report Permissions
   { code: PERMISSIONS.REPORTS_VIEW, name: '查看報表', category: 'reports', description: '查看基本統計報表' },
   { code: PERMISSIONS.REPORTS_EXPORT, name: '匯出報表', category: 'reports', description: '匯出報表資料' },
@@ -130,9 +150,11 @@ export const PERMISSION_CATEGORIES = {
   customers: { name: '客戶管理', order: 1 },
   deals: { name: '商機管理', order: 2 },
   contacts: { name: '聯絡人管理', order: 3 },
-  documents: { name: '文件管理', order: 4 },
-  reports: { name: '報表分析', order: 5 },
-  admin: { name: '系統管理', order: 6 },
+  projects: { name: '專案管理', order: 4 },
+  tasks: { name: '任務管理', order: 5 },
+  documents: { name: '文件管理', order: 6 },
+  reports: { name: '報表分析', order: 7 },
+  admin: { name: '系統管理', order: 8 },
 } as const;
 
 // ============================================
@@ -177,6 +199,12 @@ export const DEFAULT_ROLES: Record<string, DefaultRoleDefinition> = {
       PERMISSIONS.CONTACTS_CREATE,
       PERMISSIONS.CONTACTS_UPDATE,
       PERMISSIONS.CONTACTS_DELETE,
+      PERMISSIONS.PROJECTS_READ,
+      PERMISSIONS.PROJECTS_WRITE,
+      PERMISSIONS.TASKS_READ,
+      PERMISSIONS.TASKS_WRITE,
+      PERMISSIONS.TASKS_ASSIGN,
+      PERMISSIONS.TASKS_MANAGE,
       PERMISSIONS.DOCUMENTS_READ,
       PERMISSIONS.DOCUMENTS_CREATE,
       PERMISSIONS.DOCUMENTS_UPDATE,
@@ -219,6 +247,11 @@ export const DEFAULT_ROLES: Record<string, DefaultRoleDefinition> = {
       PERMISSIONS.CONTACTS_CREATE,
       PERMISSIONS.CONTACTS_UPDATE,
       PERMISSIONS.CONTACTS_DELETE,
+      PERMISSIONS.PROJECTS_READ,
+      PERMISSIONS.PROJECTS_WRITE,
+      PERMISSIONS.TASKS_READ,
+      PERMISSIONS.TASKS_WRITE,
+      PERMISSIONS.TASKS_ASSIGN,
       PERMISSIONS.DOCUMENTS_READ,
       PERMISSIONS.DOCUMENTS_CREATE,
       PERMISSIONS.DOCUMENTS_UPDATE,
@@ -245,6 +278,9 @@ export const DEFAULT_ROLES: Record<string, DefaultRoleDefinition> = {
       PERMISSIONS.CONTACTS_CREATE,
       PERMISSIONS.CONTACTS_UPDATE,
       PERMISSIONS.CONTACTS_DELETE,
+      PERMISSIONS.PROJECTS_READ,
+      PERMISSIONS.TASKS_READ,
+      PERMISSIONS.TASKS_WRITE,
       PERMISSIONS.DOCUMENTS_READ,
       PERMISSIONS.DOCUMENTS_CREATE,
       PERMISSIONS.DOCUMENTS_UPDATE,
@@ -261,6 +297,8 @@ export const DEFAULT_ROLES: Record<string, DefaultRoleDefinition> = {
       PERMISSIONS.CUSTOMERS_READ,
       PERMISSIONS.DEALS_READ,
       PERMISSIONS.CONTACTS_READ,
+      PERMISSIONS.PROJECTS_READ,
+      PERMISSIONS.TASKS_READ,
       PERMISSIONS.DOCUMENTS_READ,
       PERMISSIONS.REPORTS_VIEW,
     ],
