@@ -329,7 +329,8 @@ export function CommandPalette() {
           )}
         </div>
 
-        {/* Results List */}
+        {/* Results List - Custom command palette requires ARIA roles for accessibility */}
+        {/* NOSONAR: S6819 - Native <select> cannot support custom command palette design with search, icons, and keyboard navigation */}
         <div
           ref={listRef}
           className="max-h-[50vh] overflow-y-auto"
@@ -367,6 +368,7 @@ export function CommandPalette() {
           )}
 
           {/* Results */}
+          {/* NOSONAR: S6819 - Native <option> cannot support buttons with icons, descriptions, and custom interactions */}
           {!isSearching &&
             allItems.map((item, index) => {
               const Icon = item.icon;

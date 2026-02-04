@@ -78,15 +78,13 @@ export async function POST(request: NextRequest) {
         where: { name: 'Owner', isSystem: true },
       });
 
-      if (!ownerRole) {
-        ownerRole = await tx.role.create({
-          data: {
-            name: 'Owner',
-            description: '組織擁有者，擁有所有權限',
-            isSystem: true,
-          },
-        });
-      }
+      ownerRole ??= await tx.role.create({
+        data: {
+          name: 'Owner',
+          description: '組織擁有者，擁有所有權限',
+          isSystem: true,
+        },
+      });
 
       // 3. Create personal organization
       const orgName = name || email.split('@')[0];
