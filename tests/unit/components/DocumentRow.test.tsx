@@ -103,7 +103,8 @@ describe('DocumentRow Component', () => {
         />
       );
 
-      expect(screen.getByLabelText('AI 已分析')).toBeInTheDocument();
+      // Text is in sr-only span for screen readers
+      expect(screen.getByText('AI 已分析')).toBeInTheDocument();
     });
 
     it('shows muted dot when no analyses', () => {
@@ -113,7 +114,8 @@ describe('DocumentRow Component', () => {
         />
       );
 
-      expect(screen.getByLabelText('未分析')).toBeInTheDocument();
+      // Text is in sr-only span for screen readers
+      expect(screen.getByText('未分析')).toBeInTheDocument();
     });
   });
 

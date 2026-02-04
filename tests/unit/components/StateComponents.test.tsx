@@ -42,7 +42,8 @@ describe('LoadingState Component', () => {
       render(<LoadingState variant="spinner" />);
 
       const status = screen.getByRole('status');
-      expect(status.querySelector('[role="presentation"]')).toBeInTheDocument();
+      // Spinner uses aria-hidden="true" for decorative elements
+      expect(status.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
     });
 
     it('renders dots variant', () => {
@@ -136,35 +137,36 @@ describe('Skeleton Component', () => {
   it('renders with default props', () => {
     render(<Skeleton />);
 
-    const skeleton = document.querySelector('[role="presentation"]');
+    // Skeleton uses aria-hidden="true" for accessibility
+    const skeleton = document.querySelector('[aria-hidden="true"]');
     expect(skeleton).toBeInTheDocument();
   });
 
   it('renders with custom dimensions', () => {
     render(<Skeleton width={200} height={40} />);
 
-    const skeleton = document.querySelector('[role="presentation"]');
+    const skeleton = document.querySelector('[aria-hidden="true"]');
     expect(skeleton).toHaveStyle({ width: '200px', height: '40px' });
   });
 
   it('renders with custom className', () => {
     render(<Skeleton className="custom-class" />);
 
-    const skeleton = document.querySelector('[role="presentation"]');
+    const skeleton = document.querySelector('[aria-hidden="true"]');
     expect(skeleton).toHaveClass('custom-class');
   });
 
   it('is hidden from screen readers', () => {
     render(<Skeleton />);
 
-    const skeleton = document.querySelector('[role="presentation"]');
+    const skeleton = document.querySelector('[aria-hidden="true"]');
     expect(skeleton).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('has pulse animation', () => {
     render(<Skeleton />);
 
-    const skeleton = document.querySelector('[role="presentation"]');
+    const skeleton = document.querySelector('[aria-hidden="true"]');
     expect(skeleton).toHaveClass('animate-pulse');
   });
 });

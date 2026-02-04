@@ -251,8 +251,8 @@ describe('DataTable Component', () => {
         />
       );
 
-      // When onRowClick is provided, data rows have role="button"
-      const clickableRows = screen.getAllByRole('button');
+      // When onRowClick is provided, data rows have aria-label for accessibility
+      const clickableRows = screen.getAllByLabelText('點擊查看詳情');
       fireEvent.click(clickableRows[0]);
 
       expect(handleRowClick).toHaveBeenCalledWith(mockData[0], 0);
@@ -269,8 +269,8 @@ describe('DataTable Component', () => {
         />
       );
 
-      // When onRowClick is provided, data rows have role="button"
-      const clickableRows = screen.getAllByRole('button');
+      // When onRowClick is provided, data rows have aria-label for accessibility
+      const clickableRows = screen.getAllByLabelText('點擊查看詳情');
 
       // Enter key
       fireEvent.keyDown(clickableRows[0], { key: 'Enter' });
@@ -291,12 +291,12 @@ describe('DataTable Component', () => {
         />
       );
 
-      // When onRowClick is provided, data rows have role="button"
-      const clickableRows = screen.getAllByRole('button');
+      // When onRowClick is provided, data rows have tabindex for keyboard access
+      const clickableRows = screen.getAllByLabelText('點擊查看詳情');
       expect(clickableRows[0]).toHaveAttribute('tabindex', '0');
     });
 
-    it('rows have button role when clickable', () => {
+    it('rows are accessible when clickable', () => {
       render(
         <DataTable
           columns={mockColumns}
@@ -306,10 +306,10 @@ describe('DataTable Component', () => {
         />
       );
 
-      // Data rows should have role="button" when clickable
-      const clickableRows = screen.getAllByRole('button');
+      // Data rows should have aria-label when clickable
+      const clickableRows = screen.getAllByLabelText('點擊查看詳情');
       expect(clickableRows.length).toBeGreaterThan(0);
-      expect(clickableRows[0]).toHaveAttribute('role', 'button');
+      expect(clickableRows[0]).toHaveAttribute('aria-label', '點擊查看詳情');
     });
   });
 

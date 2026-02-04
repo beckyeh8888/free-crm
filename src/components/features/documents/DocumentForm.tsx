@@ -129,6 +129,7 @@ export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitti
       {/* Dialog */}
       <dialog
         open
+        aria-modal="true"
         aria-label={isEdit ? '編輯文件' : '新增文件'}
         className="relative bg-background-surface border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-auto shadow-xl m-0 p-0"
       >
