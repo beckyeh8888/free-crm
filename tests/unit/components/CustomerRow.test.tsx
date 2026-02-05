@@ -5,7 +5,7 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CustomerRow } from '@/components/features/customers/CustomerRow';
 import type { Customer } from '@/hooks/useCustomers';

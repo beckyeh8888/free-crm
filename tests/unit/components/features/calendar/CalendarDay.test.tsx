@@ -6,7 +6,7 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CalendarDay } from '@/components/features/calendar/CalendarDay';
 import type { CalendarEvent as CalendarEventType } from '@/hooks/useCalendar';

@@ -305,6 +305,7 @@ export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type TaskType = z.infer<typeof taskTypeEnum>;
 export type TaskPriority = z.infer<typeof taskPriorityEnum>;
 export type TaskStatus = z.infer<typeof taskStatusEnum>;
+export type TaskFilterSchema = z.infer<typeof taskFilterSchema>;
 
 // ============================================
 // Task Dependency Schemas (Sprint 5)

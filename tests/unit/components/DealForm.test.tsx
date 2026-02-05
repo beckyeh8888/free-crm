@@ -5,7 +5,7 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DealForm } from '@/components/features/deals/DealForm';
 import type { Deal } from '@/hooks/useDeals';
@@ -87,6 +87,75 @@ describe('DealForm Component', () => {
       expect(screen.getByText('談判中')).toBeInTheDocument();
       expect(screen.getByText('成交')).toBeInTheDocument();
       expect(screen.getByText('失敗')).toBeInTheDocument();
+    });
+  });
+
+  describe('Form fields', () => {
+    it('value input renders and accepts changes', () => {
+      render(<DealForm {...defaultProps} />);
+
+      const valueInput = screen.getByLabelText('金額');
+      expect(valueInput).toBeInTheDocument();
+      expect(valueInput).toHaveAttribute('type', 'number');
+
+      fireEvent.change(valueInput, { target: { value: '500000' } });
+      expect(valueInput).toHaveValue(500000);
+    });
+
+    it('stage select dropdown can be changed', () => {
+      render(<DealForm {...defaultProps} />);
+
+      const stageSelect = screen.getByLabelText('階段');
+      expect(stageSelect).toBeInTheDocument();
+      expect(stageSelect).toHaveValue('lead');
+
+      fireEvent.change(stageSelect, { target: { value: 'proposal' } });
+      expect(stageSelect).toHaveValue('proposal');
+
+      fireEvent.change(stageSelect, { target: { value: 'closed_won' } });
+      expect(stageSelect).toHaveValue('closed_won');
+    });
+
+    it('probability input renders and accepts changes', () => {
+      render(<DealForm {...defaultProps} />);
+
+      const probInput = screen.getByLabelText('機率 (%)');
+      expect(probInput).toBeInTheDocument();
+      expect(probInput).toHaveAttribute('type', 'number');
+      expect(probInput).toHaveAttribute('min', '0');
+      expect(probInput).toHaveAttribute('max', '100');
+
+      fireEvent.change(probInput, { target: { value: '75' } });
+      expect(probInput).toHaveValue(75);
+    });
+
+    it('close date input renders', () => {
+      render(<DealForm {...defaultProps} />);
+
+      const dateInput = screen.getByLabelText('預計成交日');
+      expect(dateInput).toBeInTheDocument();
+      expect(dateInput).toHaveAttribute('type', 'date');
+    });
+
+    it('notes textarea renders and accepts input', () => {
+      render(<DealForm {...defaultProps} />);
+
+      const notesTextarea = screen.getByLabelText('備註');
+      expect(notesTextarea).toBeInTheDocument();
+      expect(notesTextarea.tagName).toBe('TEXTAREA');
+
+      fireEvent.change(notesTextarea, { target: { value: 'Deal notes content' } });
+      expect(notesTextarea).toHaveValue('Deal notes content');
+    });
+
+    it('pre-fills all fields in edit mode', () => {
+      render(<DealForm {...defaultProps} deal={createMockDeal()} />);
+
+      expect(screen.getByLabelText('金額')).toHaveValue(300000);
+      expect(screen.getByLabelText('階段')).toHaveValue('proposal');
+      expect(screen.getByLabelText('機率 (%)')).toHaveValue(60);
+      expect(screen.getByLabelText('預計成交日')).toHaveValue('2026-03-15');
+      expect(screen.getByLabelText('備註')).toHaveValue('Deal notes');
     });
   });
 

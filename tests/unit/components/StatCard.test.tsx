@@ -5,7 +5,7 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect } from 'vitest';
+
 import { render, screen } from '@testing-library/react';
 import { StatCard } from '@/components/features/dashboard/StatCard';
 import { Users } from 'lucide-react';

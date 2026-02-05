@@ -5,7 +5,7 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DealCard } from '@/components/features/deals/DealCard';
 import type { Deal } from '@/hooks/useDeals';

@@ -2,7 +2,7 @@
  * API Client Unit Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi } from 'vitest';
 import { apiClient, ApiError } from '@/services/api';
 
 describe('API Client', () => {

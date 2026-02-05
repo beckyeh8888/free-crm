@@ -3,7 +3,7 @@
  * Tests for RBAC permission definitions and utility functions
  */
 
-import { describe, it, expect } from 'vitest';
+
 import {
   PERMISSIONS,
   PERMISSION_DEFINITIONS,

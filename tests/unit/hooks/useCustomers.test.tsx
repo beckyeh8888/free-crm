@@ -5,11 +5,11 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useCustomers, useCreateCustomer, useDeleteCustomer } from '@/hooks/useCustomers';
+import { useCustomers, useCustomer, useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '@/hooks/useCustomers';
 
 vi.mock('@/services/api', () => ({
   apiClient: {
@@ -84,6 +84,32 @@ describe('useCustomers Hooks', () => {
     });
   });
 
+  describe('useCustomer', () => {
+    it('calls apiClient.get with correct URL for single customer', async () => {
+      const mockResponse = { success: true, data: { id: 'c1', name: 'Customer 1', email: 'c1@test.com' } };
+      vi.mocked(apiClient.get).mockResolvedValue(mockResponse);
+
+      renderHook(() => useCustomer('c1'), { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(apiClient.get).toHaveBeenCalledWith('/api/customers/c1');
+      });
+    });
+
+    it('returns data on success', async () => {
+      const mockResponse = { success: true, data: { id: 'c1', name: 'Customer 1', email: 'c1@test.com' } };
+      vi.mocked(apiClient.get).mockResolvedValue(mockResponse);
+
+      const { result } = renderHook(() => useCustomer('c1'), { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      expect(result.current.data?.data.id).toBe('c1');
+    });
+  });
+
   describe('useCreateCustomer', () => {
     it('calls apiClient.post with correct URL', async () => {
       vi.mocked(apiClient.post).mockResolvedValue({ success: true, data: {} });
@@ -98,6 +124,25 @@ describe('useCustomers Hooks', () => {
         expect(apiClient.post).toHaveBeenCalledWith('/api/customers', {
           name: 'New Customer',
           email: 'new@test.com',
+        });
+      });
+    });
+  });
+
+  describe('useUpdateCustomer', () => {
+    it('calls apiClient.put with correct URL and data', async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({ success: true, data: {} });
+
+      const { result } = renderHook(() => useUpdateCustomer(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        result.current.mutate({ id: 'cust-123', name: 'Updated Customer', email: 'updated@test.com' });
+      });
+
+      await waitFor(() => {
+        expect(apiClient.put).toHaveBeenCalledWith('/api/customers/cust-123', {
+          name: 'Updated Customer',
+          email: 'updated@test.com',
         });
       });
     });

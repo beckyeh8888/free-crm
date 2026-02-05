@@ -3,7 +3,7 @@
  * Tests for permission checking and caching
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { vi } from 'vitest';
 import { PERMISSIONS } from '@/lib/permissions';
 
 // Mock Prisma before importing rbac
@@ -33,10 +33,13 @@ import {
   hasAllPermissions,
   checkPermission,
   isOrganizationMember,
+  getUserOrganizations,
   getUserRole,
   hasRole,
   isAdmin,
   isSuperAdmin,
+  canAccessCustomer,
+  canAccessDeal,
 } from '@/lib/rbac';
 
 const mockPrisma = prisma as unknown as {
@@ -509,6 +512,360 @@ describe('RBAC Module', () => {
       const result = await isSuperAdmin(testUserId, testOrgId);
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('getUserOrganizations', () => {
+    it('returns mapped organizations for active memberships', async () => {
+      const mockMemberships = [
+        {
+          organization: { id: 'org-1', name: 'Org One' },
+          role: { id: 'role-1', name: 'Admin' },
+          joinedAt: new Date('2025-01-01'),
+        },
+        {
+          organization: { id: 'org-2', name: 'Org Two' },
+          role: { id: 'role-2', name: 'Sales' },
+          joinedAt: new Date('2025-06-15'),
+        },
+      ];
+
+      mockPrisma.organizationMember.findMany.mockResolvedValue(mockMemberships);
+
+      const result = await getUserOrganizations(testUserId);
+
+      expect(mockPrisma.organizationMember.findMany).toHaveBeenCalledWith({
+        where: {
+          userId: testUserId,
+          status: 'active',
+        },
+        include: {
+          organization: true,
+          role: true,
+        },
+      });
+
+      expect(result).toHaveLength(2);
+      expect(result[0].organization).toEqual({ id: 'org-1', name: 'Org One' });
+      expect(result[0].role).toEqual({ id: 'role-1', name: 'Admin' });
+      expect(result[0].joinedAt).toEqual(new Date('2025-01-01'));
+      expect(result[1].organization).toEqual({ id: 'org-2', name: 'Org Two' });
+      expect(result[1].role).toEqual({ id: 'role-2', name: 'Sales' });
+    });
+
+    it('returns empty array when user has no active memberships', async () => {
+      mockPrisma.organizationMember.findMany.mockResolvedValue([]);
+
+      const result = await getUserOrganizations(testUserId);
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns only active memberships (excludes suspended)', async () => {
+      // The function queries with status: 'active', so Prisma handles filtering.
+      // We verify the correct query parameters are passed.
+      mockPrisma.organizationMember.findMany.mockResolvedValue([
+        {
+          organization: { id: 'org-1', name: 'Active Org' },
+          role: { id: 'role-1', name: 'Sales' },
+          joinedAt: new Date('2025-03-01'),
+        },
+      ]);
+
+      const result = await getUserOrganizations(testUserId);
+
+      expect(mockPrisma.organizationMember.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId: testUserId,
+            status: 'active',
+          },
+        })
+      );
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('canAccessCustomer', () => {
+    const testCustomerId = 'customer-789';
+
+    beforeEach(() => {
+      clearPermissionCache(testUserId);
+    });
+
+    it('returns false when user lacks customers:read permission', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [],
+        },
+      });
+
+      const result = await canAccessCustomer(testUserId, testOrgId, testCustomerId);
+
+      expect(result).toBe(false);
+      // Should not query customer at all
+      expect(mockPrisma.customer.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('returns true when user has assign permission and customer belongs to org', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.CUSTOMERS_READ } },
+            { permission: { code: PERMISSIONS.CUSTOMERS_ASSIGN } },
+          ],
+        },
+      });
+
+      mockPrisma.customer.findFirst.mockResolvedValue({
+        id: testCustomerId,
+        organizationId: testOrgId,
+      });
+
+      const result = await canAccessCustomer(testUserId, testOrgId, testCustomerId);
+
+      expect(result).toBe(true);
+      expect(mockPrisma.customer.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: testCustomerId,
+          organizationId: testOrgId,
+        },
+      });
+    });
+
+    it('returns false when user has assign permission but customer not in org', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.CUSTOMERS_READ } },
+            { permission: { code: PERMISSIONS.CUSTOMERS_ASSIGN } },
+          ],
+        },
+      });
+
+      mockPrisma.customer.findFirst.mockResolvedValue(null);
+
+      const result = await canAccessCustomer(testUserId, testOrgId, testCustomerId);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true when user has read-only permission and is assigned to the customer', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.CUSTOMERS_READ } },
+          ],
+        },
+      });
+
+      mockPrisma.customer.findFirst.mockResolvedValue({
+        id: testCustomerId,
+        organizationId: testOrgId,
+        assignedToId: testUserId,
+      });
+
+      const result = await canAccessCustomer(testUserId, testOrgId, testCustomerId);
+
+      expect(result).toBe(true);
+      expect(mockPrisma.customer.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: testCustomerId,
+          organizationId: testOrgId,
+          OR: [{ assignedToId: testUserId }, { createdById: testUserId }],
+        },
+      });
+    });
+
+    it('returns true when user has read-only permission and is creator of the customer', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.CUSTOMERS_READ } },
+          ],
+        },
+      });
+
+      mockPrisma.customer.findFirst.mockResolvedValue({
+        id: testCustomerId,
+        organizationId: testOrgId,
+        createdById: testUserId,
+      });
+
+      const result = await canAccessCustomer(testUserId, testOrgId, testCustomerId);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when user has read-only permission but is not assigned or creator', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.CUSTOMERS_READ } },
+          ],
+        },
+      });
+
+      mockPrisma.customer.findFirst.mockResolvedValue(null);
+
+      const result = await canAccessCustomer(testUserId, testOrgId, testCustomerId);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('canAccessDeal', () => {
+    const testDealId = 'deal-101';
+
+    beforeEach(() => {
+      clearPermissionCache(testUserId);
+    });
+
+    it('returns false when user lacks deals:read permission', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [],
+        },
+      });
+
+      const result = await canAccessDeal(testUserId, testOrgId, testDealId);
+
+      expect(result).toBe(false);
+      expect(mockPrisma.deal.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('returns true when user has assign permission and deal belongs to org', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.DEALS_READ } },
+            { permission: { code: PERMISSIONS.DEALS_ASSIGN } },
+          ],
+        },
+      });
+
+      mockPrisma.deal.findFirst.mockResolvedValue({
+        id: testDealId,
+        customer: { organizationId: testOrgId },
+      });
+
+      const result = await canAccessDeal(testUserId, testOrgId, testDealId);
+
+      expect(result).toBe(true);
+      // With assign permission, query should NOT include OR filter
+      expect(mockPrisma.deal.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: testDealId,
+          customer: { organizationId: testOrgId },
+        },
+      });
+    });
+
+    it('returns false when user has assign permission but deal not in org', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.DEALS_READ } },
+            { permission: { code: PERMISSIONS.DEALS_ASSIGN } },
+          ],
+        },
+      });
+
+      mockPrisma.deal.findFirst.mockResolvedValue(null);
+
+      const result = await canAccessDeal(testUserId, testOrgId, testDealId);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true when user has read-only permission and is assigned to the deal', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.DEALS_READ } },
+          ],
+        },
+      });
+
+      mockPrisma.deal.findFirst.mockResolvedValue({
+        id: testDealId,
+        assignedToId: testUserId,
+      });
+
+      const result = await canAccessDeal(testUserId, testOrgId, testDealId);
+
+      expect(result).toBe(true);
+      // Without assign permission, query should include OR filter
+      expect(mockPrisma.deal.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: testDealId,
+          customer: { organizationId: testOrgId },
+          OR: [{ assignedToId: testUserId }, { createdById: testUserId }],
+        },
+      });
+    });
+
+    it('returns true when user has read-only permission and is creator of the deal', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.DEALS_READ } },
+          ],
+        },
+      });
+
+      mockPrisma.deal.findFirst.mockResolvedValue({
+        id: testDealId,
+        createdById: testUserId,
+      });
+
+      const result = await canAccessDeal(testUserId, testOrgId, testDealId);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when user has read-only permission but is not assigned or creator', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'active',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.DEALS_READ } },
+          ],
+        },
+      });
+
+      mockPrisma.deal.findFirst.mockResolvedValue(null);
+
+      const result = await canAccessDeal(testUserId, testOrgId, testDealId);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when user is not an active member', async () => {
+      mockPrisma.organizationMember.findUnique.mockResolvedValue({
+        status: 'suspended',
+        role: {
+          permissions: [
+            { permission: { code: PERMISSIONS.DEALS_READ } },
+          ],
+        },
+      });
+
+      const result = await canAccessDeal(testUserId, testOrgId, testDealId);
+
+      expect(result).toBe(false);
+      expect(mockPrisma.deal.findFirst).not.toHaveBeenCalled();
     });
   });
 });

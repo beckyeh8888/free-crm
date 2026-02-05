@@ -5,11 +5,11 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useDeals, useCreateDeal, useDeleteDeal } from '@/hooks/useDeals';
+import { useDeals, useDeal, useCreateDeal, useUpdateDeal, useDeleteDeal } from '@/hooks/useDeals';
 
 vi.mock('@/services/api', () => ({
   apiClient: {
@@ -98,6 +98,60 @@ describe('useDeals Hooks', () => {
         expect(apiClient.post).toHaveBeenCalledWith('/api/deals', {
           title: 'New Deal',
           value: 50000,
+        });
+      });
+    });
+  });
+
+  describe('useDeal', () => {
+    it('calls apiClient.get with correct URL for single deal', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { id: 'd1', title: 'Deal 1', value: 100000, stage: 'lead' },
+      });
+
+      renderHook(() => useDeal('d1'), { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(apiClient.get).toHaveBeenCalledWith('/api/deals/d1');
+      });
+    });
+
+    it('returns data on success', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { id: 'd1', title: 'Deal 1', value: 100000, stage: 'lead' },
+      });
+
+      const { result } = renderHook(() => useDeal('d1'), { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+
+      expect(result.current.data?.data).toEqual({
+        id: 'd1',
+        title: 'Deal 1',
+        value: 100000,
+        stage: 'lead',
+      });
+    });
+  });
+
+  describe('useUpdateDeal', () => {
+    it('calls apiClient.put with correct URL and data', async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({ success: true, data: {} });
+
+      const { result } = renderHook(() => useUpdateDeal(), { wrapper: createWrapper() });
+
+      await act(async () => {
+        result.current.mutate({ id: 'deal-123', title: 'Updated Deal', value: 75000 });
+      });
+
+      await waitFor(() => {
+        expect(apiClient.put).toHaveBeenCalledWith('/api/deals/deal-123', {
+          title: 'Updated Deal',
+          value: 75000,
         });
       });
     });

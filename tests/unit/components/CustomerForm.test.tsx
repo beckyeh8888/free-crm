@@ -5,7 +5,7 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CustomerForm } from '@/components/features/customers/CustomerForm';
 import type { Customer } from '@/hooks/useCustomers';
@@ -89,6 +89,87 @@ describe('CustomerForm Component', () => {
 
       const submitBtn = screen.getByRole('button', { name: '建立' });
       expect(submitBtn).toBeDisabled();
+    });
+  });
+
+  describe('Form fields', () => {
+    it('email input renders and accepts changes', () => {
+      render(<CustomerForm {...defaultProps} />);
+
+      const emailInput = screen.getByLabelText('電子郵件');
+      expect(emailInput).toBeInTheDocument();
+      expect(emailInput).toHaveAttribute('type', 'email');
+
+      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+      expect(emailInput).toHaveValue('test@example.com');
+    });
+
+    it('phone input renders and accepts changes', () => {
+      render(<CustomerForm {...defaultProps} />);
+
+      const phoneInput = screen.getByLabelText('電話');
+      expect(phoneInput).toBeInTheDocument();
+      expect(phoneInput).toHaveAttribute('type', 'tel');
+
+      fireEvent.change(phoneInput, { target: { value: '0987654321' } });
+      expect(phoneInput).toHaveValue('0987654321');
+    });
+
+    it('company input renders and accepts changes', () => {
+      render(<CustomerForm {...defaultProps} />);
+
+      const companyInput = screen.getByLabelText('公司');
+      expect(companyInput).toBeInTheDocument();
+
+      fireEvent.change(companyInput, { target: { value: 'Test Corp' } });
+      expect(companyInput).toHaveValue('Test Corp');
+    });
+
+    it('type dropdown can be changed', () => {
+      render(<CustomerForm {...defaultProps} />);
+
+      const typeSelect = screen.getByLabelText('類型');
+      expect(typeSelect).toBeInTheDocument();
+      expect(typeSelect).toHaveValue('B2B');
+
+      fireEvent.change(typeSelect, { target: { value: 'B2C' } });
+      expect(typeSelect).toHaveValue('B2C');
+    });
+
+    it('status dropdown can be changed', () => {
+      render(<CustomerForm {...defaultProps} />);
+
+      const statusSelect = screen.getByLabelText('狀態');
+      expect(statusSelect).toBeInTheDocument();
+      expect(statusSelect).toHaveValue('active');
+
+      fireEvent.change(statusSelect, { target: { value: 'lead' } });
+      expect(statusSelect).toHaveValue('lead');
+
+      fireEvent.change(statusSelect, { target: { value: 'inactive' } });
+      expect(statusSelect).toHaveValue('inactive');
+    });
+
+    it('notes textarea renders and accepts input', () => {
+      render(<CustomerForm {...defaultProps} />);
+
+      const notesTextarea = screen.getByLabelText('備註');
+      expect(notesTextarea).toBeInTheDocument();
+      expect(notesTextarea.tagName).toBe('TEXTAREA');
+
+      fireEvent.change(notesTextarea, { target: { value: 'Some notes here' } });
+      expect(notesTextarea).toHaveValue('Some notes here');
+    });
+
+    it('pre-fills all fields in edit mode', () => {
+      render(<CustomerForm {...defaultProps} customer={createMockCustomer()} />);
+
+      expect(screen.getByLabelText('電子郵件')).toHaveValue('john@example.com');
+      expect(screen.getByLabelText('電話')).toHaveValue('0912345678');
+      expect(screen.getByLabelText('公司')).toHaveValue('Acme Corp');
+      expect(screen.getByLabelText('類型')).toHaveValue('B2B');
+      expect(screen.getByLabelText('狀態')).toHaveValue('active');
+      expect(screen.getByLabelText('備註')).toHaveValue('Test notes');
     });
   });
 

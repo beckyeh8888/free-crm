@@ -3,7 +3,8 @@
  * Tests for 2FA utilities (TOTP, backup codes, encryption)
  */
 
-import { describe, it, expect } from 'vitest';
+
+import crypto from 'node:crypto';
 import {
   generateSecret,
   generateTOTPUri,
@@ -15,6 +16,7 @@ import {
   removeUsedBackupCode,
   encryptSecret,
   decryptSecret,
+  setupTwoFactor,
 } from '@/lib/2fa';
 
 describe('2FA Module', () => {
@@ -65,6 +67,34 @@ describe('2FA Module', () => {
       expect(uri).toContain('algorithm=SHA1');
       expect(uri).toContain('digits=6');
       expect(uri).toContain('period=30');
+    });
+  });
+
+  describe('setupTwoFactor', () => {
+    it('returns an object with secret, uri, and qrCodeDataUrl', async () => {
+      const result = await setupTwoFactor('test@example.com');
+
+      expect(result).toHaveProperty('secret');
+      expect(result).toHaveProperty('uri');
+      expect(result).toHaveProperty('qrCodeDataUrl');
+    });
+
+    it('qrCodeDataUrl starts with data:image/png;base64,', async () => {
+      const result = await setupTwoFactor('test@example.com');
+
+      expect(result.qrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('uri contains otpauth://totp/', async () => {
+      const result = await setupTwoFactor('test@example.com');
+
+      expect(result.uri).toContain('otpauth://totp/');
+    });
+
+    it('secret is valid base32', async () => {
+      const result = await setupTwoFactor('test@example.com');
+
+      expect(result.secret).toMatch(/^[A-Z2-7]+$/);
     });
   });
 
@@ -346,6 +376,22 @@ describe('2FA Module', () => {
         expect(() => {
           decryptSecret(tampered, encryptionKey);
         }).toThrow();
+      });
+
+      it('decrypts legacy CBC format (iv:encrypted)', () => {
+        const plaintext = 'JBSWY3DPEHPK3PXP';
+
+        // Manually create a CBC-encrypted string
+        const key = crypto.scryptSync(encryptionKey, 'salt', 32);
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+        let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        const cbcData = iv.toString('hex') + ':' + encrypted;
+
+        const decrypted = decryptSecret(cbcData, encryptionKey);
+
+        expect(decrypted).toBe(plaintext);
       });
     });
 

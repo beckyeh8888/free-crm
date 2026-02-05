@@ -6,7 +6,7 @@
  */
 
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, vi } from 'vitest';
+import { vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GanttViewToggle, type TimeRange } from '@/components/features/gantt/GanttViewToggle';
 
