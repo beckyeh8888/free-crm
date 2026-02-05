@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+coverage-*.txt
 test-results
 
 # SonarCloud
@@ -27,6 +28,7 @@ test-results
 # misc
 .DS_Store
 *.pem
+nul
 
 # debug
 npm-debug.log*
