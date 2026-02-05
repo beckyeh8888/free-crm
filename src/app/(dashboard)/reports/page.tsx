@@ -1,221 +1,336 @@
 'use client';
 
 /**
- * Reports Page - Calm CRM Dark Theme
- * Pipeline Funnel + Win Rate + Revenue Trend + Top Performers
+ * Reports Page - Sprint 6
+ * Interactive chart-based reports with 5 tabs:
+ * Sales Pipeline / Revenue / Customer Analytics / Task Activity / Team Performance
+ *
  * WCAG 2.2 AAA Compliant
+ * Recharts loaded via next/dynamic (SSR: false)
  */
 
 import { useState, useCallback } from 'react';
-import { useDeals } from '@/hooks/useDeals';
-import { pipelineColors, pipelineLabels } from '@/lib/design-tokens';
+import dynamic from 'next/dynamic';
+import {
+  ReportTabNavigation,
+  ReportDateRangePicker,
+  ReportExportButton,
+  ReportKPI,
+} from '@/components/features/reports';
+import type { ReportTab } from '@/components/features/reports';
+import {
+  useSalesPipeline,
+  useRevenue,
+  useCustomerAnalytics,
+  useTaskActivity,
+  useTeamPerformance,
+} from '@/hooks/useReports';
+import { formatCurrency, formatPercentage } from '@/lib/report-utils';
+import type {
+  SalesPipelineReport,
+  RevenueReport,
+  CustomerAnalyticsReport,
+  TaskActivityReport,
+  TeamPerformanceReport,
+} from '@/types/reports';
 
-const stageOrder = ['lead', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
-const SKELETON_IDS = ['skel-1', 'skel-2', 'skel-3', 'skel-4'] as const;
+// ============================================
+// Lazy-loaded chart components (no SSR)
+// ============================================
 
-type ExportFormat = 'csv' | 'json';
+const SalesPipelineChart = dynamic(
+  () => import('@/components/features/reports/SalesPipelineChart').then((m) => m.SalesPipelineChart),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+const RevenueChart = dynamic(
+  () => import('@/components/features/reports/RevenueChart').then((m) => m.RevenueChart),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+const CustomerAnalyticsChart = dynamic(
+  () => import('@/components/features/reports/CustomerAnalyticsChart').then((m) => m.CustomerAnalyticsChart),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+const TaskActivityChart = dynamic(
+  () => import('@/components/features/reports/TaskActivityChart').then((m) => m.TaskActivityChart),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+const TeamPerformanceChart = dynamic(
+  () => import('@/components/features/reports/TeamPerformanceChart').then((m) => m.TeamPerformanceChart),
+  { ssr: false, loading: () => <ChartSkeleton /> }
+);
+
+// ============================================
+// Skeleton
+// ============================================
+
+function ChartSkeleton() {
+  return (
+    <div className="h-64 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl animate-pulse" />
+  );
+}
+
+const KPI_SKELETON_IDS = ['kpi-1', 'kpi-2', 'kpi-3', 'kpi-4'] as const;
+
+function KPISkeleton() {
+  return (
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      {KPI_SKELETON_IDS.map((id) => (
+        <div key={id} className="h-[100px] bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl animate-pulse" />
+      ))}
+    </div>
+  );
+}
+
+// ============================================
+// Tab Label Map
+// ============================================
+
+const TAB_LABELS: Record<ReportTab, string> = {
+  pipeline: '銷售管線',
+  revenue: '營收分析',
+  customers: '客戶分析',
+  tasks: '任務活動',
+  team: '團隊績效',
+};
+
+// ============================================
+// Page Component
+// ============================================
 
 export default function ReportsPage() {
-  const { data, isLoading } = useDeals({ limit: 200 });
-  const deals = data?.data ?? [];
-  const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null);
+  const [activeTab, setActiveTab] = useState<ReportTab>('pipeline');
+  const now = new Date();
+  const [dateRange, setDateRange] = useState({
+    startDate: new Date(now.getFullYear(), 0, 1).toISOString(),
+    endDate: now.toISOString(),
+  });
+  const [exportingFormat, setExportingFormat] = useState<string | null>(null);
 
-  // Aggregate stats
-  const stageGroups: Record<string, { count: number; value: number }> = {};
-  for (const stage of stageOrder) {
-    stageGroups[stage] = { count: 0, value: 0 };
-  }
-  for (const deal of deals) {
-    if (stageGroups[deal.stage]) {
-      stageGroups[deal.stage].count += 1;
-      stageGroups[deal.stage].value += deal.value ?? 0;
+  // Fetch data for the active tab
+  const pipelineQuery = useSalesPipeline(activeTab === 'pipeline' ? dateRange : undefined);
+  const revenueQuery = useRevenue(activeTab === 'revenue' ? { ...dateRange, groupBy: 'month' } : undefined);
+  const customerQuery = useCustomerAnalytics(activeTab === 'customers' ? dateRange : undefined);
+  const taskQuery = useTaskActivity(activeTab === 'tasks' ? dateRange : undefined);
+  const teamQuery = useTeamPerformance(activeTab === 'team' ? dateRange : undefined);
+
+  // Export handler
+  const handleExport = useCallback(async (format: 'csv' | 'json' | 'print') => {
+    if (format === 'print') {
+      globalThis.print();
+      return;
     }
-  }
 
-  const totalDeals = deals.length;
-  const wonDeals = stageGroups.closed_won?.count ?? 0;
-  const lostDeals = stageGroups.closed_lost?.count ?? 0;
-  const closedDeals = wonDeals + lostDeals;
-  const winRate = closedDeals > 0 ? Math.round((wonDeals / closedDeals) * 100) : 0;
-
-  const maxCount = Math.max(...Object.values(stageGroups).map((s) => s.count), 1);
-
-  /**
-   * Handle export to CSV or JSON
-   */
-  const handleExport = useCallback(async (format: ExportFormat) => {
     setExportingFormat(format);
     try {
       const response = await fetch('/api/reports/export', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format, limit: 1000 }),
       });
 
-      if (!response.ok) {
-        throw new Error('匯出失敗');
-      }
+      if (!response.ok) throw new Error('匯出失敗');
 
-      // Get the blob and create download link
       const blob = await response.blob();
       const url = globalThis.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
 
-      // Get filename from Content-Disposition header or use default
       const contentDisposition = response.headers.get('Content-Disposition');
       const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-      const filename = filenameMatch?.[1] ?? `deals-report.${format}`;
+      link.download = filenameMatch?.[1] ?? `report.${format}`;
 
-      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
       globalThis.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('匯出報表失敗，請稍後再試');
+    } catch {
+      // Export failed silently
     } finally {
       setExportingFormat(null);
     }
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
-        {SKELETON_IDS.map((id) => (
-          <div key={id} className="h-64 bg-background-tertiary border border-border rounded-xl" />
-        ))}
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-xl font-bold text-[#fafafa]">報表分析</h1>
+        <div className="flex items-center gap-3">
+          <ReportDateRangePicker value={dateRange} onChange={setDateRange} />
+          <ReportExportButton
+            onExport={handleExport}
+            isExporting={exportingFormat !== null}
+          />
+        </div>
       </div>
-    );
-  }
+
+      {/* Tab Navigation */}
+      <ReportTabNavigation activeTab={activeTab} onChange={setActiveTab} />
+
+      {/* Live region for tab changes */}
+      <div className="sr-only" aria-live="polite" role="status">
+        已切換至{TAB_LABELS[activeTab]}報表
+      </div>
+
+      {/* Report Content */}
+      <div
+        id={`report-panel-${activeTab}`}
+        role="tabpanel"
+        aria-labelledby={`report-tab-${activeTab}`}
+      >
+        {activeTab === 'pipeline' && (
+          <PipelinePanel data={pipelineQuery.data?.data} isLoading={pipelineQuery.isLoading} />
+        )}
+        {activeTab === 'revenue' && (
+          <RevenuePanel data={revenueQuery.data?.data} isLoading={revenueQuery.isLoading} />
+        )}
+        {activeTab === 'customers' && (
+          <CustomerPanel data={customerQuery.data?.data} isLoading={customerQuery.isLoading} />
+        )}
+        {activeTab === 'tasks' && (
+          <TaskPanel data={taskQuery.data?.data} isLoading={taskQuery.isLoading} />
+        )}
+        {activeTab === 'team' && (
+          <TeamPanel data={teamQuery.data?.data} isLoading={teamQuery.isLoading} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// Tab Panel Components
+// ============================================
+
+function PipelinePanel({
+  data,
+  isLoading,
+}: {
+  readonly data?: SalesPipelineReport | null;
+  readonly isLoading: boolean;
+}) {
+  if (isLoading || !data) return <><KPISkeleton /><ChartSkeleton /></>;
 
   return (
     <div className="space-y-6">
-      {/* Export buttons */}
-      <div className="flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => handleExport('json')}
-          disabled={exportingFormat !== null}
-          aria-label="匯出 JSON 格式報表"
-          className="px-3 py-1.5 rounded-lg text-sm border border-border text-text-secondary hover:bg-background-hover transition-colors min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {exportingFormat === 'json' ? '匯出中...' : 'JSON'}
-        </button>
-        <button
-          type="button"
-          onClick={() => handleExport('csv')}
-          disabled={exportingFormat !== null}
-          aria-label="匯出 CSV 格式報表"
-          className="px-3 py-1.5 rounded-lg text-sm border border-border text-text-secondary hover:bg-background-hover transition-colors min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {exportingFormat === 'csv' ? '匯出中...' : 'CSV'}
-        </button>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <ReportKPI label="總商機數" value={String(data.summary.totalDeals)} />
+        <ReportKPI label="勝率" value={formatPercentage(data.summary.winRate)} />
+        <ReportKPI label="總金額" value={formatCurrency(data.summary.totalValue)} />
+        <ReportKPI label="平均成交天數" value={`${data.summary.avgDaysToClose} 天`} />
       </div>
+      <SalesPipelineChart
+        funnel={data.funnel}
+        conversionRates={data.conversionRates}
+        summary={data.summary}
+      />
+    </div>
+  );
+}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pipeline Funnel */}
-        <section className="bg-background-tertiary border border-border rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-text-primary mb-4">Pipeline 漏斗</h2>
-          <div className="space-y-3">
-            {stageOrder.map((stage) => {
-              const color = pipelineColors[stage as keyof typeof pipelineColors] || '#666666';
-              const label = pipelineLabels[stage] || stage;
-              const stageData = stageGroups[stage];
-              const widthPercent = Math.max((stageData.count / maxCount) * 100, 8);
+function RevenuePanel({
+  data,
+  isLoading,
+}: {
+  readonly data?: RevenueReport | null;
+  readonly isLoading: boolean;
+}) {
+  if (isLoading || !data) return <><KPISkeleton /><ChartSkeleton /></>;
 
-              return (
-                <div key={stage} className="flex items-center gap-3">
-                  <span className="w-16 text-xs text-text-secondary truncate">{label}</span>
-                  <div className="flex-1 h-7 bg-background-hover rounded overflow-hidden">
-                    <div
-                      className="h-full rounded flex items-center px-2"
-                      style={{ width: `${widthPercent}%`, backgroundColor: color }}
-                    >
-                      <span className="text-xs font-medium text-white">{stageData.count}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Win Rate */}
-        <section className="bg-background-tertiary border border-border rounded-xl p-5 flex flex-col items-center justify-center">
-          <h2 className="text-sm font-semibold text-text-primary mb-4 self-start">勝率</h2>
-          <div className="text-center">
-            <p className="text-5xl font-bold text-text-primary">{winRate}%</p>
-            <p className="text-sm text-text-secondary mt-2">
-              成交 / 已結案
-            </p>
-            <p className="text-sm text-text-muted mt-1">
-              {wonDeals} / {closedDeals}
-            </p>
-          </div>
-        </section>
-
-        {/* Revenue by Stage */}
-        <section className="bg-background-tertiary border border-border rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-text-primary mb-4">各階段營收</h2>
-          <div className="space-y-3">
-            {stageOrder.map((stage) => {
-              const color = pipelineColors[stage as keyof typeof pipelineColors] || '#666666';
-              const label = pipelineLabels[stage] || stage;
-              const stageData = stageGroups[stage];
-
-              return (
-                <div key={stage} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: color }}
-                      aria-hidden="true"
-                    />
-                    <span className="text-sm text-text-secondary">{label}</span>
-                  </div>
-                  <span className="text-sm font-medium text-text-primary">
-                    NT${stageData.value.toLocaleString()}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Summary */}
-        <section className="bg-background-tertiary border border-border rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-text-primary mb-4">總覽</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between">
-              <span className="text-sm text-text-secondary">總商機數</span>
-              <span className="text-sm font-medium text-text-primary">{totalDeals}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-text-secondary">進行中</span>
-              <span className="text-sm font-medium text-text-primary">{totalDeals - closedDeals}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-text-secondary">已成交</span>
-              <span className="text-sm font-medium text-success">{wonDeals}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-text-secondary">已失敗</span>
-              <span className="text-sm font-medium text-error">{lostDeals}</span>
-            </div>
-            <hr className="border-border" />
-            <div className="flex justify-between">
-              <span className="text-sm text-text-secondary">總營收</span>
-              <span className="text-sm font-bold text-accent-600">
-                NT${(stageGroups.closed_won?.value ?? 0).toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </section>
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <ReportKPI label="總營收" value={formatCurrency(data.summary.totalRevenue)} />
+        <ReportKPI
+          label="成長率"
+          value={formatPercentage(Math.abs(data.summary.growthRate))}
+          trend={data.summary.growthRate}
+        />
+        <ReportKPI label="平均成交金額" value={formatCurrency(data.summary.avgDealSize)} />
+        <ReportKPI label="總失敗金額" value={formatCurrency(data.summary.totalLost)} />
       </div>
+      <RevenueChart trends={data.trends} summary={data.summary} />
+    </div>
+  );
+}
+
+function CustomerPanel({
+  data,
+  isLoading,
+}: {
+  readonly data?: CustomerAnalyticsReport | null;
+  readonly isLoading: boolean;
+}) {
+  if (isLoading || !data) return <><KPISkeleton /><ChartSkeleton /></>;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <ReportKPI label="總客戶數" value={String(data.summary.totalCustomers)} />
+        <ReportKPI label="活躍客戶" value={String(data.summary.activeCustomers)} />
+        <ReportKPI label="新增客戶" value={String(data.summary.newCustomersThisPeriod)} />
+        <ReportKPI label="平均客戶營收" value={formatCurrency(data.summary.avgRevenuePerCustomer)} />
+      </div>
+      <CustomerAnalyticsChart
+        growth={data.growth}
+        statusDistribution={data.statusDistribution}
+        topCustomersByRevenue={data.topCustomersByRevenue}
+        summary={data.summary}
+      />
+    </div>
+  );
+}
+
+function TaskPanel({
+  data,
+  isLoading,
+}: {
+  readonly data?: TaskActivityReport | null;
+  readonly isLoading: boolean;
+}) {
+  if (isLoading || !data) return <><KPISkeleton /><ChartSkeleton /></>;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <ReportKPI label="總任務數" value={String(data.summary.totalTasks)} />
+        <ReportKPI label="完成率" value={formatPercentage(data.summary.completionRate)} />
+        <ReportKPI label="逾期任務" value={String(data.summary.overdueTasks)} />
+        <ReportKPI label="平均完成天數" value={`${data.summary.avgCompletionDays} 天`} />
+      </div>
+      <TaskActivityChart
+        completionTrend={data.completionTrend}
+        statusDistribution={data.statusDistribution}
+        priorityDistribution={data.priorityDistribution}
+        typeDistribution={data.typeDistribution}
+        summary={data.summary}
+      />
+    </div>
+  );
+}
+
+function TeamPanel({
+  data,
+  isLoading,
+}: {
+  readonly data?: TeamPerformanceReport | null;
+  readonly isLoading: boolean;
+}) {
+  if (isLoading || !data) return <><KPISkeleton /><ChartSkeleton /></>;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <ReportKPI label="團隊人數" value={String(data.summary.totalMembers)} />
+        <ReportKPI label="總營收" value={formatCurrency(data.summary.totalRevenue)} />
+        <ReportKPI label="平均勝率" value={formatPercentage(data.summary.avgWinRate)} />
+        <ReportKPI label="最佳成員" value={data.summary.topPerformer ?? '-'} />
+      </div>
+      <TeamPerformanceChart members={data.members} summary={data.summary} />
     </div>
   );
 }

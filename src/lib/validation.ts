@@ -325,3 +325,23 @@ export const createDependencySchema = z.object({
 
 export type CreateDependency = z.infer<typeof createDependencySchema>;
 export type DependencyType = z.infer<typeof dependencyTypeEnum>;
+
+// ============================================
+// Report Query Schemas (Sprint 6)
+// ============================================
+
+export const reportGroupByEnum = z.enum(['week', 'month', 'quarter']);
+
+export const reportQuerySchema = z.object({
+  startDate: z.string().datetime(),
+  endDate: z.string().datetime(),
+});
+
+export const revenueQuerySchema = z.object({
+  startDate: z.string().datetime(),
+  endDate: z.string().datetime(),
+  groupBy: reportGroupByEnum.default('month'),
+});
+
+export type ReportQuery = z.infer<typeof reportQuerySchema>;
+export type RevenueQuery = z.infer<typeof revenueQuerySchema>;

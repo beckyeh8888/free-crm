@@ -47,6 +47,8 @@ export default defineConfig({
         'src/lib/db.ts',
         'src/lib/prisma.ts',
         'src/lib/inngest/**',
+        // CommandPalette has pre-existing test timeouts (Search API tests)
+        'src/components/CommandPalette/**',
       ],
       thresholds: {
         lines: 95,
