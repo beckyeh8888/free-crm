@@ -10,7 +10,7 @@ import { Plus, Search } from 'lucide-react';
 import { useCustomers, useCreateCustomer, type Customer } from '@/hooks/useCustomers';
 import { CustomerRow } from '@/components/features/customers/CustomerRow';
 import { CustomerForm, type CustomerFormData } from '@/components/features/customers/CustomerForm';
-import { ContactsPanel } from '@/components/features/contacts';
+import { CustomerDetailPanel } from '@/components/features/customers/CustomerDetailPanel';
 
 const statusFilters = [
   { key: 'all', label: '全部' },
@@ -154,9 +154,9 @@ export default function CustomersPage() {
         />
       )}
 
-      {/* Contacts Panel */}
+      {/* Customer Detail Panel */}
       {selectedCustomer && (
-        <ContactsPanel
+        <CustomerDetailPanel
           customer={selectedCustomer}
           onClose={() => setSelectedCustomer(null)}
         />

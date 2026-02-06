@@ -11,11 +11,12 @@ import { pipelineColors, pipelineLabels } from '@/lib/design-tokens';
 
 interface PipelineBoardProps {
   readonly deals: readonly Deal[];
+  readonly onDealClick?: (dealId: string) => void;
 }
 
 const stageOrder = ['lead', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
 
-export function PipelineBoard({ deals }: PipelineBoardProps) {
+export function PipelineBoard({ deals, onDealClick }: PipelineBoardProps) {
   // Group deals by stage
   const stageGroups: Record<string, Deal[]> = {};
   for (const stage of stageOrder) {
@@ -62,7 +63,7 @@ export function PipelineBoard({ deals }: PipelineBoardProps) {
             {/* Cards */}
             <div className="space-y-2">
               {stageDeals.map((deal) => (
-                <DealCard key={deal.id} deal={deal} />
+                <DealCard key={deal.id} deal={deal} onClick={onDealClick ? () => onDealClick(deal.id) : undefined} />
               ))}
               {stageDeals.length === 0 && (
                 <div className="py-8 text-center">

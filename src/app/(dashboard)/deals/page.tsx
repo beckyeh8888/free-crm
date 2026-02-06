@@ -12,12 +12,14 @@ import { useDeals, useCreateDeal, type Deal } from '@/hooks/useDeals';
 import { PipelineBoard } from '@/components/features/deals/PipelineBoard';
 import { DealCard } from '@/components/features/deals/DealCard';
 import { DealForm, type DealFormData } from '@/components/features/deals/DealForm';
+import { DealDetailDrawer } from '@/components/features/deals/DealDetailDrawer';
 
 type ViewMode = 'pipeline' | 'list';
 
 export default function DealsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('pipeline');
   const [showForm, setShowForm] = useState(false);
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
 
   const { data, isLoading } = useDeals({ limit: 100 });
   const createMutation = useCreateDeal();
@@ -78,6 +80,7 @@ export default function DealsPage() {
         viewMode={viewMode}
         deals={deals}
         onShowForm={() => setShowForm(true)}
+        onDealClick={(id) => setSelectedDealId(id)}
       />
 
       {/* Form Modal */}
@@ -86,6 +89,14 @@ export default function DealsPage() {
           onSubmit={handleCreate}
           onClose={() => setShowForm(false)}
           isSubmitting={createMutation.isPending}
+        />
+      )}
+
+      {/* Deal Detail Drawer */}
+      {selectedDealId && (
+        <DealDetailDrawer
+          dealId={selectedDealId}
+          onClose={() => setSelectedDealId(null)}
         />
       )}
     </div>
@@ -99,9 +110,10 @@ interface DealsContentProps {
   readonly viewMode: ViewMode;
   readonly deals: readonly Deal[];
   readonly onShowForm: () => void;
+  readonly onDealClick: (dealId: string) => void;
 }
 
-function DealsContent({ isLoading, viewMode, deals, onShowForm }: DealsContentProps) {
+function DealsContent({ isLoading, viewMode, deals, onShowForm, onDealClick }: DealsContentProps) {
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-4">
@@ -121,7 +133,7 @@ function DealsContent({ isLoading, viewMode, deals, onShowForm }: DealsContentPr
   }
 
   if (viewMode === 'pipeline') {
-    return <PipelineBoard deals={deals} />;
+    return <PipelineBoard deals={deals} onDealClick={onDealClick} />;
   }
 
   return (
@@ -130,7 +142,7 @@ function DealsContent({ isLoading, viewMode, deals, onShowForm }: DealsContentPr
         <div className="divide-y divide-border-subtle">
           {deals.map((deal) => (
             <div key={deal.id} className="p-3">
-              <DealCard deal={deal} />
+              <DealCard deal={deal} onClick={() => onDealClick(deal.id)} />
             </div>
           ))}
         </div>

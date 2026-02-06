@@ -89,7 +89,7 @@ export function useUpdateDeal() {
 
   return useMutation({
     mutationFn: ({ id, ...data }: Partial<Deal> & { readonly id: string }) =>
-      apiClient.put<DealResponse>(`/api/deals/${id}`, data),
+      apiClient.patch<DealResponse>(`/api/deals/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['deals'] });
       queryClient.invalidateQueries({ queryKey: ['deals', variables.id] });

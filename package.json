@@ -41,6 +41,7 @@
     "@libsql/client": "^0.17.0",
     "@prisma/adapter-libsql": "^7.3.0",
     "@prisma/client": "^7.3.0",
+    "@react-email/components": "^1.0.7",
     "@tanstack/react-query": "^5.90.20",
     "@upstash/ratelimit": "^2.0.8",
     "bcryptjs": "^3.0.3",
@@ -55,7 +56,9 @@
     "qrcode": "^1.5.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-email": "^5.2.7",
     "recharts": "^3.7.0",
+    "resend": "^6.9.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {

@@ -345,3 +345,31 @@ export const revenueQuerySchema = z.object({
 
 export type ReportQuery = z.infer<typeof reportQuerySchema>;
 export type RevenueQuery = z.infer<typeof revenueQuerySchema>;
+
+// ============================================
+// Notification Preference Schemas (Sprint 7)
+// ============================================
+
+export const notificationChannelEnum = z.enum(['email', 'in_app']);
+
+export const notificationEventTypeEnum = z.enum([
+  'deal_stage_change',
+  'task_reminder',
+  'customer_assign',
+  'new_document',
+]);
+
+export const notificationPreferenceSchema = z.object({
+  channel: notificationChannelEnum,
+  eventType: notificationEventTypeEnum,
+  enabled: z.boolean(),
+});
+
+export const updateNotificationPreferencesSchema = z.object({
+  preferences: z.array(notificationPreferenceSchema),
+});
+
+export type NotificationChannel = z.infer<typeof notificationChannelEnum>;
+export type NotificationEventType = z.infer<typeof notificationEventTypeEnum>;
+export type NotificationPreference = z.infer<typeof notificationPreferenceSchema>;
+export type UpdateNotificationPreferences = z.infer<typeof updateNotificationPreferencesSchema>;

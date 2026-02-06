@@ -52,8 +52,55 @@ export interface DocumentAnalysisFailedEvent {
   };
 }
 
+// ============================================
+// Notification Events (Sprint 7)
+// ============================================
+
+export interface TaskReminderEvent {
+  name: 'task/reminder.due';
+  data: {
+    taskId: string;
+    userId: string;
+    taskTitle: string;
+    dueDate: string;
+    priority: 'low' | 'medium' | 'high' | 'urgent';
+    customerName?: string;
+    dealName?: string;
+  };
+}
+
+export interface DealStageChangedEvent {
+  name: 'deal/stage.changed';
+  data: {
+    dealId: string;
+    dealName: string;
+    userId: string;
+    customerName: string;
+    previousStage: string;
+    newStage: string;
+    dealValue: number;
+    currency: string;
+    changedById: string;
+    changedByName: string;
+  };
+}
+
+export interface UserCreatedEvent {
+  name: 'user/created';
+  data: {
+    userId: string;
+    userName: string;
+    userEmail: string;
+    organizationName?: string;
+    invitedBy?: string;
+  };
+}
+
 // Union type for all events
 export type FreeCRMEvents =
   | DocumentAnalyzeEvent
   | DocumentAnalysisCompleteEvent
-  | DocumentAnalysisFailedEvent;
+  | DocumentAnalysisFailedEvent
+  | TaskReminderEvent
+  | DealStageChangedEvent
+  | UserCreatedEvent;

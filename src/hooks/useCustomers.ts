@@ -85,7 +85,7 @@ export function useUpdateCustomer() {
 
   return useMutation({
     mutationFn: ({ id, ...data }: Partial<Customer> & { readonly id: string }) =>
-      apiClient.put<CustomerResponse>(`/api/customers/${id}`, data),
+      apiClient.patch<CustomerResponse>(`/api/customers/${id}`, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customers', variables.id] });

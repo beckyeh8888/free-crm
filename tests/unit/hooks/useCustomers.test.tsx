@@ -16,6 +16,7 @@ vi.mock('@/services/api', () => ({
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
+    patch: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -130,8 +131,8 @@ describe('useCustomers Hooks', () => {
   });
 
   describe('useUpdateCustomer', () => {
-    it('calls apiClient.put with correct URL and data', async () => {
-      vi.mocked(apiClient.put).mockResolvedValue({ success: true, data: {} });
+    it('calls apiClient.patch with correct URL and data', async () => {
+      vi.mocked(apiClient.patch).mockResolvedValue({ success: true, data: {} });
 
       const { result } = renderHook(() => useUpdateCustomer(), { wrapper: createWrapper() });
 
@@ -140,7 +141,7 @@ describe('useCustomers Hooks', () => {
       });
 
       await waitFor(() => {
-        expect(apiClient.put).toHaveBeenCalledWith('/api/customers/cust-123', {
+        expect(apiClient.patch).toHaveBeenCalledWith('/api/customers/cust-123', {
           name: 'Updated Customer',
           email: 'updated@test.com',
         });
