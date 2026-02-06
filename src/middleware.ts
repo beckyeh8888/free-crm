@@ -11,7 +11,7 @@ import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
 
 // Routes that require authentication
-const protectedRoutes = ['/dashboard', '/customers', '/deals', '/documents', '/activities', '/reports', '/settings', '/admin'];
+const protectedRoutes = ['/dashboard', '/customers', '/deals', '/calendar', '/documents', '/activities', '/reports', '/settings', '/admin'];
 
 // Routes that should redirect to dashboard if already logged in
 const authRoutes = ['/login', '/register'];
