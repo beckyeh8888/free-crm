@@ -31,11 +31,6 @@ interface SalesPipelineChartProps {
   readonly summary: SalesPipelineSummary;
 }
 
-/** Format Tooltip values */
-export function pipelineTooltipFormatter(val: unknown): [unknown, string] {
-  return [val ?? 0, '商機數'];
-}
-
 export function SalesPipelineChart({
   funnel,
   conversionRates,
@@ -77,10 +72,7 @@ export function SalesPipelineChart({
                 width={70}
                 {...chartTheme.axis}
               />
-              <Tooltip
-                contentStyle={chartTheme.tooltip}
-                formatter={pipelineTooltipFormatter}
-              />
+              <Tooltip contentStyle={chartTheme.tooltip} />
               <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                 {chartData.map((entry) => (
                   <Cell

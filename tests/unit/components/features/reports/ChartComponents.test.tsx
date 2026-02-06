@@ -32,7 +32,7 @@ vi.mock('recharts', () => ({
   Legend: () => null,
 }));
 
-import { SalesPipelineChart, pipelineTooltipFormatter } from '@/components/features/reports/SalesPipelineChart';
+import { SalesPipelineChart } from '@/components/features/reports/SalesPipelineChart';
 import { RevenueChart, revenueYAxisFormatter, revenueTooltipFormatter, revenueTooltipLabelFormatter } from '@/components/features/reports/RevenueChart';
 import { CustomerAnalyticsChart } from '@/components/features/reports/CustomerAnalyticsChart';
 import { TaskActivityChart } from '@/components/features/reports/TaskActivityChart';
@@ -315,20 +315,6 @@ describe('TeamPerformanceChart', () => {
 });
 
 describe('Chart Formatter Functions', () => {
-  describe('pipelineTooltipFormatter', () => {
-    it('returns value with 商機數 label', () => {
-      expect(pipelineTooltipFormatter(42)).toEqual([42, '商機數']);
-    });
-
-    it('handles null value with fallback to 0', () => {
-      expect(pipelineTooltipFormatter(null)).toEqual([0, '商機數']);
-    });
-
-    it('handles undefined value with fallback to 0', () => {
-      expect(pipelineTooltipFormatter(undefined)).toEqual([0, '商機數']);
-    });
-  });
-
   describe('revenueYAxisFormatter', () => {
     it('formats numbers compactly', () => {
       const result = revenueYAxisFormatter(1000000);
