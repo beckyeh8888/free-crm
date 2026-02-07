@@ -105,8 +105,10 @@ export async function POST(request: NextRequest) {
       response: result.text.substring(0, 50),
     });
   } catch (err) {
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    console.error('[AI Test Connection Error]', rawMessage, err);
     const aiError = handleAIError(err);
-    return errorResponse('VALIDATION_ERROR', aiError.message);
+    return errorResponse('VALIDATION_ERROR', `${aiError.message}（${rawMessage.substring(0, 200)}）`);
   }
 }
 

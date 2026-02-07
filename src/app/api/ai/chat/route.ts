@@ -46,7 +46,19 @@ export async function POST(request: NextRequest) {
     return errorResponse('VALIDATION_ERROR', aiError.message);
   }
 
-  let body: { messages?: Array<{ role: string; content: string }> };
+  // AI SDK v6 DefaultChatTransport sends UIMessage[] with `parts` array
+  // Also support legacy { role, content } format for direct API calls
+  interface UIMessagePart {
+    readonly type: string;
+    readonly text?: string;
+  }
+  interface IncomingMessage {
+    readonly role: string;
+    readonly content?: string;
+    readonly parts?: readonly UIMessagePart[];
+  }
+
+  let body: { messages?: IncomingMessage[] };
   try {
     body = await request.json();
   } catch {
@@ -58,13 +70,24 @@ export async function POST(request: NextRequest) {
     return errorResponse('VALIDATION_ERROR', '至少需要一則訊息');
   }
 
+  // Extract text content from UIMessage parts or fallback to content string
+  function extractContent(msg: IncomingMessage): string {
+    if (msg.parts && Array.isArray(msg.parts)) {
+      return msg.parts
+        .filter((p): p is UIMessagePart & { text: string } => p.type === 'text' && typeof p.text === 'string')
+        .map((p) => p.text)
+        .join('');
+    }
+    return msg.content || '';
+  }
+
   try {
     // Get AI model
     const model = await getAIModel(organizationId);
 
     // Get user's latest message for context building
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
-    const query = lastUserMessage?.content || '';
+    const query = lastUserMessage ? extractContent(lastUserMessage) : '';
 
     // Fetch CRM context based on the query
     const crmContext = await getCRMContext(organizationId, session.user.id, query);
@@ -81,13 +104,13 @@ export async function POST(request: NextRequest) {
       organizationName: org?.name || '組織',
     });
 
-    // Stream the response
+    // Stream the response — convert UIMessage parts to plain content for AI model
     const result = streamText({
       model,
       system: `${systemPrompt}\n\n---\n\n以下是與查詢相關的 CRM 資料：\n\n${crmContext}`,
       messages: messages.map((m) => ({
         role: m.role as 'user' | 'assistant' | 'system',
-        content: m.content,
+        content: extractContent(m),
       })),
       maxOutputTokens: 2000,
     });
