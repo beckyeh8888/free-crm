@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     const result = await generateText({
       model: aiModel,
       prompt: 'Say "OK" in one word.',
-      maxOutputTokens: 5,
+      maxOutputTokens: 16,
       abortSignal: AbortSignal.timeout(10000),
     });
 
