@@ -10,6 +10,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { inngest } from '@/lib/inngest/client';
 import {
   requireAuth,
   successResponse,
@@ -282,6 +283,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
       request,
     });
+
+    // Send deal stage change notification if stage changed
+    if (data.stage && data.stage !== existingDeal.stage && deal.assignedToId) {
+      await inngest.send({
+        name: 'deal/stage.changed',
+        data: {
+          dealId: deal.id,
+          dealName: deal.title,
+          userId: deal.assignedToId,
+          customerName: deal.customer.name,
+          previousStage: existingDeal.stage,
+          newStage: data.stage,
+          dealValue: deal.value ?? 0,
+          currency: deal.currency ?? 'TWD',
+          changedByName: session.user.name ?? 'Unknown',
+        },
+      });
+    }
 
     return successResponse(deal);
   } catch (err) {

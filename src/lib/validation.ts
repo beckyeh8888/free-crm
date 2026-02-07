@@ -373,3 +373,20 @@ export type NotificationChannel = z.infer<typeof notificationChannelEnum>;
 export type NotificationEventType = z.infer<typeof notificationEventTypeEnum>;
 export type NotificationPreference = z.infer<typeof notificationPreferenceSchema>;
 export type UpdateNotificationPreferences = z.infer<typeof updateNotificationPreferencesSchema>;
+
+// ============================================
+// In-App Notification Schemas (Sprint 8)
+// ============================================
+
+export const notificationsQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(50).default(20),
+  unreadOnly: z.coerce.boolean().default(false),
+});
+
+export const markNotificationsReadSchema = z.object({
+  notificationIds: z.array(z.string().cuid()).optional(),
+});
+
+export type NotificationsQuery = z.infer<typeof notificationsQuerySchema>;
+export type MarkNotificationsRead = z.infer<typeof markNotificationsReadSchema>;

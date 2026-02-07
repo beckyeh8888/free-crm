@@ -9,6 +9,7 @@
 import { inngest } from './client';
 import { prisma } from '../prisma';
 import { sendEmail } from '../email';
+import { createInAppNotification } from '../notification-service';
 import { render } from '@react-email/components';
 import { TaskReminder } from '@/emails/TaskReminder';
 import { DealStageChange } from '@/emails/DealStageChange';
@@ -212,8 +213,20 @@ export const sendTaskReminderEmail = inngest.createFunction(
   async ({ event, step }) => {
     const { taskId, userId, taskTitle, dueDate, priority, customerName, dealName } = event.data;
 
-    // Step 1: Check user's notification preferences
-    const shouldSend = await step.run('check-preferences', async () => {
+    // Step 1: Create in-app notification (independent of email preference)
+    await step.run('create-in-app-notification', async () => {
+      await createInAppNotification({
+        userId,
+        type: 'task_reminder',
+        title: '任務提醒',
+        message: `任務「${taskTitle}」即將到期`,
+        linkUrl: '/calendar',
+        metadata: { taskId, dueDate, priority },
+      });
+    });
+
+    // Step 2: Check user's email notification preferences
+    const shouldSendEmail = await step.run('check-email-preferences', async () => {
       const pref = await prisma.notificationPreference.findUnique({
         where: {
           userId_channel_eventType: {
@@ -223,15 +236,14 @@ export const sendTaskReminderEmail = inngest.createFunction(
           },
         },
       });
-      // Default to true if no preference set
       return pref?.enabled ?? true;
     });
 
-    if (!shouldSend) {
-      return { success: true, skipped: true, reason: 'User disabled email notifications' };
+    if (!shouldSendEmail) {
+      return { success: true, emailSkipped: true, inAppCreated: true };
     }
 
-    // Step 2: Get user details
+    // Step 3: Get user details
     const user = await step.run('get-user', async () => {
       return prisma.user.findUnique({
         where: { id: userId },
@@ -243,7 +255,7 @@ export const sendTaskReminderEmail = inngest.createFunction(
       return { success: false, error: 'User not found or no email' };
     }
 
-    // Step 3: Render and send email
+    // Step 4: Render and send email
     await step.run('send-email', async () => {
       const html = await render(
         TaskReminder({
@@ -292,8 +304,29 @@ export const sendDealNotification = inngest.createFunction(
       changedByName,
     } = event.data;
 
-    // Step 1: Check user's notification preferences
-    const shouldSend = await step.run('check-preferences', async () => {
+    const stageLabels: Record<string, string> = {
+      lead: '潛在客戶',
+      qualified: '已確認',
+      proposal: '提案中',
+      negotiation: '議價中',
+      closed_won: '成交',
+      closed_lost: '流失',
+    };
+
+    // Step 1: Create in-app notification (independent of email preference)
+    await step.run('create-in-app-notification', async () => {
+      await createInAppNotification({
+        userId,
+        type: 'deal_stage_change',
+        title: '商機階段變更',
+        message: `${dealName} 已從${stageLabels[previousStage] ?? previousStage}變更為${stageLabels[newStage] ?? newStage}`,
+        linkUrl: `/deals`,
+        metadata: { dealId, previousStage, newStage },
+      });
+    });
+
+    // Step 2: Check user's email notification preferences
+    const shouldSendEmail = await step.run('check-email-preferences', async () => {
       const pref = await prisma.notificationPreference.findUnique({
         where: {
           userId_channel_eventType: {
@@ -306,11 +339,11 @@ export const sendDealNotification = inngest.createFunction(
       return pref?.enabled ?? true;
     });
 
-    if (!shouldSend) {
-      return { success: true, skipped: true, reason: 'User disabled email notifications' };
+    if (!shouldSendEmail) {
+      return { success: true, emailSkipped: true, inAppCreated: true };
     }
 
-    // Step 2: Get user details
+    // Step 3: Get user details
     const user = await step.run('get-user', async () => {
       return prisma.user.findUnique({
         where: { id: userId },
@@ -322,14 +355,14 @@ export const sendDealNotification = inngest.createFunction(
       return { success: false, error: 'User not found or no email' };
     }
 
-    // Step 3: Format deal value
+    // Step 4: Format deal value
     const formattedValue = new Intl.NumberFormat('zh-TW', {
       style: 'currency',
       currency: currency || 'TWD',
       maximumFractionDigits: 0,
     }).format(dealValue);
 
-    // Step 4: Render and send email
+    // Step 5: Render and send email
     await step.run('send-email', async () => {
       const html = await render(
         DealStageChange({
@@ -343,15 +376,6 @@ export const sendDealNotification = inngest.createFunction(
           changedBy: changedByName,
         })
       );
-
-      const stageLabels: Record<string, string> = {
-        lead: '潛在客戶',
-        qualified: '已確認',
-        proposal: '提案中',
-        negotiation: '議價中',
-        closed_won: '成交',
-        closed_lost: '流失',
-      };
 
       return sendEmail({
         to: user.email,
