@@ -25,6 +25,7 @@ export interface DocumentAnalyzeEvent {
   data: {
     documentId: string;
     userId: string;
+    organizationId: string;
     analysisType: 'contract' | 'email' | 'meeting_notes' | 'quotation';
     options?: {
       extractEntities?: boolean;
@@ -40,6 +41,7 @@ export interface DocumentAnalysisCompleteEvent {
     documentId: string;
     analysisId: string;
     userId: string;
+    organizationId: string;
   };
 }
 

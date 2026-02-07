@@ -9,6 +9,7 @@
 import { ProfileSection } from '@/components/features/settings/ProfileSection';
 import { SecuritySection } from '@/components/features/settings/SecuritySection';
 import { NotificationSection } from '@/components/features/settings/NotificationSection';
+import { AISettingsSection } from '@/components/features/settings/AISettingsSection';
 
 export default function SettingsPage() {
   return (
@@ -16,6 +17,7 @@ export default function SettingsPage() {
       <ProfileSection />
       <SecuritySection />
       <NotificationSection />
+      <AISettingsSection />
     </div>
   );
 }

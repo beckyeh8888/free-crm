@@ -390,3 +390,41 @@ export const markNotificationsReadSchema = z.object({
 
 export type NotificationsQuery = z.infer<typeof notificationsQuerySchema>;
 export type MarkNotificationsRead = z.infer<typeof markNotificationsReadSchema>;
+
+// ============================================
+// AI Configuration Schemas
+// ============================================
+
+export const aiProviderSchema = z.enum(['openai', 'anthropic', 'google', 'ollama']);
+
+export const aiConfigSchema = z.object({
+  provider: aiProviderSchema,
+  apiKey: z.string().min(1, 'API 金鑰為必填'),
+  model: z.string().optional(),
+  ollamaEndpoint: z.string().url('請輸入有效的 URL').optional(),
+  features: z.object({
+    chat: z.boolean().default(true),
+    document_analysis: z.boolean().default(true),
+    email_draft: z.boolean().default(true),
+    insights: z.boolean().default(true),
+  }).optional(),
+});
+
+export const aiChatMessageSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string().min(1).max(10000),
+  })).min(1, '至少需要一則訊息'),
+});
+
+export const emailDraftSchema = z.object({
+  customerId: z.string().cuid().optional(),
+  dealId: z.string().cuid().optional(),
+  tone: z.enum(['formal', 'friendly', 'concise']).default('formal'),
+  purpose: z.enum(['follow_up', 'outreach', 'reply', 'thank_you']),
+  context: z.string().max(5000).optional(),
+});
+
+export type AIConfig = z.infer<typeof aiConfigSchema>;
+export type AIChatMessage = z.infer<typeof aiChatMessageSchema>;
+export type EmailDraft = z.infer<typeof emailDraftSchema>;

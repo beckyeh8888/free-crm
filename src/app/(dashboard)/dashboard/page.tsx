@@ -10,6 +10,7 @@ import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { StatCard } from '@/components/features/dashboard/StatCard';
 import { PipelineOverview } from '@/components/features/dashboard/PipelineOverview';
 import { RecentActivity } from '@/components/features/dashboard/RecentActivity';
+import { AIInsightsCard } from '@/components/features/ai';
 
 function formatCurrency(value: number): string {
   if (value >= 1000000) {
@@ -72,6 +73,9 @@ export default function DashboardPage() {
         <PipelineOverview stages={stats?.pipelineStages ?? []} />
         <RecentActivity activities={stats?.recentActivity ?? []} />
       </div>
+
+      {/* AI Insights */}
+      <AIInsightsCard />
     </div>
   );
 }

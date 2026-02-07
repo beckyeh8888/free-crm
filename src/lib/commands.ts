@@ -11,6 +11,8 @@ import {
   LayoutDashboard,
   Settings,
   Plus,
+  Sparkles,
+  Mail,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -108,6 +110,24 @@ export const commands: ReadonlyArray<Command> = [
     icon: Plus,
     shortcut: 'N F',
     action: { type: 'navigate', path: '/documents?action=new' },
+  },
+
+  // AI commands
+  {
+    id: 'ai-chat',
+    label: 'AI 助手',
+    description: '開啟 AI 對話助手',
+    category: 'action',
+    icon: Sparkles,
+    action: { type: 'action' },
+  },
+  {
+    id: 'ai-email-draft',
+    label: '產生 Email 草稿',
+    description: 'AI 產生 Email 草稿',
+    category: 'action',
+    icon: Mail,
+    action: { type: 'action' },
   },
 ];
 

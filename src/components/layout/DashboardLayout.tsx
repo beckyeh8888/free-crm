@@ -5,18 +5,30 @@
  * Calm CRM Dark Theme - WCAG 2.2 AAA Compliant
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect, useCallback } from 'react';
 import { SidebarProvider, Sidebar } from './Sidebar';
-import { Header } from './Header';
+import { Header, setAIChatToggle, clearAIChatToggle } from './Header';
 import { MobileTabBar } from './MobileTabBar';
 import { CommandPaletteProvider, CommandPalette } from '@/components/CommandPalette';
 import { KeyboardShortcutsProvider } from '@/hooks/useKeyboardShortcuts';
+import { AIChatPanel } from '@/components/features/ai';
 
 interface DashboardLayoutProps {
   readonly children: ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
+  const toggleAIChat = useCallback(() => {
+    setIsAIChatOpen((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    setAIChatToggle(toggleAIChat);
+    return () => clearAIChatToggle();
+  }, [toggleAIChat]);
+
   return (
     <CommandPaletteProvider>
       <KeyboardShortcutsProvider>
@@ -48,6 +60,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </div>
         </SidebarProvider>
+
+        {/* AI Chat Panel */}
+        <AIChatPanel
+          isOpen={isAIChatOpen}
+          onClose={() => setIsAIChatOpen(false)}
+        />
       </KeyboardShortcutsProvider>
     </CommandPaletteProvider>
   );

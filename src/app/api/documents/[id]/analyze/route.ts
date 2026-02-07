@@ -18,6 +18,7 @@ import {
   logAudit,
 } from '@/lib/api-utils';
 import { inngest } from '@/lib/inngest/client';
+import { isAIConfigured } from '@/lib/ai/provider';
 import { z } from 'zod';
 
 interface RouteContext {
@@ -145,6 +146,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
   // Check if document has content to analyze
   if (!document.content || document.content.trim().length === 0) {
     return errorResponse('VALIDATION_ERROR', '文件內容為空，無法分析');
+  }
+
+  // Check if AI is configured for this organization
+  if (organizationId) {
+    const aiReady = await isAIConfigured(organizationId);
+    if (!aiReady) {
+      return errorResponse(
+        'VALIDATION_ERROR',
+        'AI 功能尚未設定。請至「設定 → AI 功能」配置 API Key 後再試。'
+      );
+    }
   }
 
   try {

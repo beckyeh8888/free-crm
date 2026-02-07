@@ -14,6 +14,10 @@ import { render } from '@react-email/components';
 import { TaskReminder } from '@/emails/TaskReminder';
 import { DealStageChange } from '@/emails/DealStageChange';
 import { WelcomeEmail } from '@/emails/WelcomeEmail';
+import { generateText } from 'ai';
+import { getAIModel, isAIConfigured } from '@/lib/ai/provider';
+import { getDocumentAnalysisPrompt } from '@/lib/ai/prompts/document';
+import { handleAIError } from '@/lib/ai/errors';
 
 /**
  * Document Analysis Function
@@ -58,9 +62,7 @@ export const analyzeDocument = inngest.createFunction(
   },
   { event: 'document/analyze.requested' },
   async ({ event, step }) => {
-    const { documentId, userId, analysisType } = event.data;
-    // organizationId and options are available in event.data but currently unused
-    // They can be accessed via event.data.organizationId and event.data.options if needed
+    const { documentId, userId, organizationId, analysisType } = event.data;
 
     // Step 1: Fetch document
     const document = await step.run('fetch-document', async () => {
@@ -116,29 +118,58 @@ export const analyzeDocument = inngest.createFunction(
     });
 
     // Step 2: Perform AI analysis
-    // Note: Current implementation uses placeholder analysis.
-    // For production, integrate with AI service (OpenAI, Anthropic, etc.)
-    // See: ISO 42001 AI Management requirements
     const analysisResult = await step.run('ai-analysis', async () => {
-      // Placeholder implementation - returns mock analysis data
       const content = document.content || '';
 
-      return {
-        summary: `分析摘要：${document.name} 文件包含 ${content.length} 個字元。`,
-        entities: JSON.stringify({
-          people: [],
-          companies: [],
-          dates: [],
-        }),
-        sentiment: 'neutral' as const,
-        keyPoints: JSON.stringify([
-          '這是自動生成的分析結果',
-          '實際 AI 整合待實作',
-        ]),
-        actionItems: JSON.stringify([]),
-        confidence: 0.85,
-        model: 'placeholder-v1',
-      };
+      // Check if AI is configured for this organization
+      const aiConfigured = await isAIConfigured(organizationId);
+
+      if (!aiConfigured) {
+        return {
+          summary: `「${document.name}」文件包含 ${content.length} 個字元。請至設定頁面配置 AI 服務以啟用智能分析。`,
+          entities: JSON.stringify({ people: [], companies: [], dates: [] }),
+          sentiment: 'neutral' as const,
+          keyPoints: JSON.stringify(['AI 服務尚未設定，目前僅提供基本資訊']),
+          actionItems: JSON.stringify(['前往「設定 → AI 功能」配置 API Key']),
+          confidence: 0,
+          model: 'none',
+        };
+      }
+
+      try {
+        const model = await getAIModel(organizationId);
+        const systemPrompt = getDocumentAnalysisPrompt(analysisType);
+
+        const result = await generateText({
+          model,
+          system: systemPrompt,
+          prompt: content,
+          maxOutputTokens: 2000,
+        });
+
+        const parsed = JSON.parse(result.text);
+
+        return {
+          summary: parsed.summary || '',
+          entities: JSON.stringify(parsed.entities || { people: [], companies: [], dates: [] }),
+          sentiment: (parsed.sentiment || 'neutral') as 'positive' | 'negative' | 'neutral',
+          keyPoints: JSON.stringify(parsed.keyPoints || []),
+          actionItems: JSON.stringify(parsed.actionItems || []),
+          confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.8,
+          model: result.response?.modelId || 'unknown',
+        };
+      } catch (err) {
+        const errorMsg = handleAIError(err);
+        return {
+          summary: `分析失敗：${errorMsg}`,
+          entities: JSON.stringify({ people: [], companies: [], dates: [] }),
+          sentiment: 'neutral' as const,
+          keyPoints: JSON.stringify([]),
+          actionItems: JSON.stringify([]),
+          confidence: 0,
+          model: 'error',
+        };
+      }
     });
 
     // Step 3: Save analysis to database

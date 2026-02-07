@@ -67,6 +67,10 @@ export const PERMISSIONS = {
   ADMIN_AUDIT_EXPORT: 'admin:audit:export',
   ADMIN_SETTINGS: 'admin:settings',
   ADMIN_ORG: 'admin:organization',
+
+  // AI Permissions
+  AI_USE: 'ai:use',
+  AI_CONFIGURE: 'ai:configure',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -140,6 +144,10 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { code: PERMISSIONS.ADMIN_AUDIT_EXPORT, name: '匯出稽核日誌', category: 'admin', description: '匯出稽核日誌報告' },
   { code: PERMISSIONS.ADMIN_SETTINGS, name: '系統設定', category: 'admin', description: '管理系統設定' },
   { code: PERMISSIONS.ADMIN_ORG, name: '組織管理', category: 'admin', description: '管理組織資訊' },
+
+  // AI Permissions
+  { code: PERMISSIONS.AI_USE, name: 'AI 功能使用', category: 'ai', description: '使用 AI 助手、Email 草稿、銷售洞察' },
+  { code: PERMISSIONS.AI_CONFIGURE, name: 'AI 設定管理', category: 'ai', description: '管理 AI 供應商設定和 API 金鑰' },
 ];
 
 // ============================================
@@ -155,6 +163,7 @@ export const PERMISSION_CATEGORIES = {
   documents: { name: '文件管理', order: 6 },
   reports: { name: '報表分析', order: 7 },
   admin: { name: '系統管理', order: 8 },
+  ai: { name: 'AI 功能', order: 9 },
 } as const;
 
 // ============================================
@@ -224,6 +233,9 @@ export const DEFAULT_ROLES: Record<string, DefaultRoleDefinition> = {
       PERMISSIONS.ADMIN_AUDIT,
       PERMISSIONS.ADMIN_SETTINGS,
       PERMISSIONS.ADMIN_ORG,
+      // AI permissions
+      PERMISSIONS.AI_USE,
+      PERMISSIONS.AI_CONFIGURE,
     ],
   },
   MANAGER: {
@@ -260,6 +272,8 @@ export const DEFAULT_ROLES: Record<string, DefaultRoleDefinition> = {
       PERMISSIONS.REPORTS_VIEW,
       PERMISSIONS.REPORTS_EXPORT,
       PERMISSIONS.REPORTS_ADVANCED,
+      // AI permissions
+      PERMISSIONS.AI_USE,
     ],
   },
   SALES: {
@@ -286,6 +300,8 @@ export const DEFAULT_ROLES: Record<string, DefaultRoleDefinition> = {
       PERMISSIONS.DOCUMENTS_UPDATE,
       PERMISSIONS.DOCUMENTS_ANALYZE,
       PERMISSIONS.REPORTS_VIEW,
+      // AI permissions
+      PERMISSIONS.AI_USE,
     ],
   },
   VIEWER: {

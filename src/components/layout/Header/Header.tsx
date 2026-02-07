@@ -7,12 +7,18 @@
 
 import { useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { Search, Bell, Menu } from 'lucide-react';
+import { Search, Bell, Menu, Sparkles } from 'lucide-react';
 import { useSidebar } from '../Sidebar';
 import { useCommandPalette } from '@/components/CommandPalette';
 import { usePlatform } from '@/hooks/usePlatform';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 import { NotificationDropdown } from '@/components/features/notifications';
+import { useAIStatus } from '@/hooks/useAISettings';
+
+// AI Chat panel state - shared via callback
+let onToggleAIChat: (() => void) | null = null;
+export function setAIChatToggle(fn: () => void) { onToggleAIChat = fn; }
+export function clearAIChatToggle() { onToggleAIChat = null; }
 
 // Page titles mapping
 const pageTitles: Record<string, string> = {
@@ -31,6 +37,9 @@ export function Header() {
   const { toggle, isCollapsed } = useSidebar();
   const { open: openCommandPalette } = useCommandPalette();
   const { modKey } = usePlatform();
+
+  // AI status
+  const { isConfigured: isAIConfigured } = useAIStatus();
 
   // Notification state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -105,6 +114,23 @@ export function Header() {
             {modKey}K
           </span>
         </button>
+
+        {/* AI Chat Toggle */}
+        {isAIConfigured && (
+          <button
+            type="button"
+            onClick={() => onToggleAIChat?.()}
+            className="
+              flex items-center justify-center w-10 h-10 rounded-lg
+              text-text-secondary hover:bg-background-hover hover:text-accent-500
+              transition-colors duration-200
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background
+            "
+            aria-label="開啟 AI 助手"
+          >
+            <Sparkles className="w-5 h-5" />
+          </button>
+        )}
 
         {/* Notification Bell */}
         <div className="relative">

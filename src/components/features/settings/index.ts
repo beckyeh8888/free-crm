@@ -4,3 +4,4 @@ export { NotificationSection } from './NotificationSection';
 export { PasswordChangeModal } from './PasswordChangeModal';
 export { TwoFactorSetupFlow } from './TwoFactorSetupFlow';
 export { LoginHistoryModal } from './LoginHistoryModal';
+export { AISettingsSection } from './AISettingsSection';
