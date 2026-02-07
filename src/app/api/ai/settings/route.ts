@@ -62,17 +62,21 @@ export async function PUT(request: NextRequest) {
 
   const { provider, apiKey, model, ollamaEndpoint, features } = parseResult.data;
 
-  // Encrypt the API key before storing
-  const encryptedKey = encrypt(apiKey);
+  // Build upsert list — skip API key if keeping existing
+  const keepExistingKey = apiKey === '__KEEP_EXISTING__';
 
-  // Upsert all settings
-  const upserts = [
+  const upserts: { key: string; value: string | null }[] = [
     { key: AI_SETTING_KEYS.PROVIDER, value: provider },
-    { key: AI_SETTING_KEYS.API_KEY, value: encryptedKey },
     { key: AI_SETTING_KEYS.MODEL, value: model || null },
     { key: AI_SETTING_KEYS.OLLAMA_ENDPOINT, value: ollamaEndpoint || null },
     { key: AI_SETTING_KEYS.FEATURES, value: features ? JSON.stringify(features) : null },
   ];
+
+  // Only update API key if user provided a new one
+  if (!keepExistingKey) {
+    const encryptedKey = encrypt(apiKey);
+    upserts.push({ key: AI_SETTING_KEYS.API_KEY, value: encryptedKey });
+  }
 
   for (const { key, value } of upserts) {
     await prisma.systemSetting.upsert({

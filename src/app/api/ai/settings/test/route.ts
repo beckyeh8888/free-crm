@@ -13,6 +13,9 @@ import {
 } from '@/lib/api-utils';
 import { checkAISettingsTestRateLimit } from '@/lib/ai/rate-limit';
 import { handleAIError } from '@/lib/ai/errors';
+import { prisma } from '@/lib/prisma';
+import { decrypt } from '@/lib/ai/encryption';
+import { AI_SETTING_KEYS } from '@/lib/ai/types';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { generateText, type LanguageModel } from 'ai';
@@ -56,7 +59,23 @@ export async function POST(request: NextRequest) {
     return errorResponse('VALIDATION_ERROR', '請提供有效的供應商和 API 金鑰');
   }
 
-  const { provider, apiKey, model } = parseResult.data;
+  const { provider, apiKey: rawApiKey, model } = parseResult.data;
+
+  // Resolve stored API key if needed
+  let apiKey = rawApiKey;
+  if (rawApiKey === '__USE_STORED__') {
+    const stored = await prisma.systemSetting.findUnique({
+      where: { organizationId_key: { organizationId, key: AI_SETTING_KEYS.API_KEY } },
+    });
+    if (!stored?.value) {
+      return errorResponse('VALIDATION_ERROR', '尚未儲存 API 金鑰，請先輸入金鑰');
+    }
+    try {
+      apiKey = decrypt(stored.value);
+    } catch {
+      return errorResponse('VALIDATION_ERROR', 'API 金鑰解密失敗，請重新輸入');
+    }
+  }
 
   try {
     const startTime = Date.now();

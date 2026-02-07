@@ -84,6 +84,36 @@ export function useTestAIConnection() {
   });
 }
 
+// ============================================
+// AI Models Hook
+// ============================================
+
+interface ModelInfo {
+  readonly id: string;
+  readonly name: string;
+}
+
+interface ModelsResponse {
+  readonly success: boolean;
+  readonly data: {
+    readonly models: readonly ModelInfo[];
+  };
+}
+
+/**
+ * Fetch available models from provider API.
+ * Triggered manually via mutate().
+ */
+export function useAIModels() {
+  return useMutation({
+    mutationFn: (data: {
+      readonly provider: string;
+      readonly apiKey: string;
+      readonly ollamaEndpoint?: string;
+    }) => apiClient.post<ModelsResponse>('/api/ai/settings/models', data),
+  });
+}
+
 /**
  * Lightweight check if AI is configured (for conditional UI rendering)
  */

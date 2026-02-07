@@ -5,23 +5,31 @@
  * WCAG 2.2 AAA Compliant
  *
  * Allows organization admins to configure their own LLM API keys.
+ * Fetches available models dynamically from provider APIs.
  */
 
-import { useState, useEffect } from 'react';
-import { Sparkles, Check, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Sparkles, Check, AlertCircle, Loader2, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
   useAIConfig,
   useUpdateAIConfig,
   useTestAIConnection,
+  useAIModels,
 } from '@/hooks/useAISettings';
 import { AI_PROVIDERS, DEFAULT_MODELS, AI_FEATURES } from '@/lib/ai/types';
 import type { AIProvider, AIFeature } from '@/lib/ai/types';
+
+interface DynamicModel {
+  readonly id: string;
+  readonly name: string;
+}
 
 export function AISettingsSection() {
   const { data, isLoading } = useAIConfig();
   const updateMutation = useUpdateAIConfig();
   const testMutation = useTestAIConnection();
+  const modelsMutation = useAIModels();
 
   // Form state
   const [provider, setProvider] = useState<AIProvider>('openai');
@@ -36,7 +44,11 @@ export function AISettingsSection() {
     insights: true,
   });
 
-  // Sync from API response
+  // Dynamic models
+  const [dynamicModels, setDynamicModels] = useState<DynamicModel[]>([]);
+
+  // Sync from API response — setState in effect is legitimate for initial data hydration
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (data?.data?.config) {
       const config = data.data.config;
@@ -48,6 +60,29 @@ export function AISettingsSection() {
       }
     }
   }, [data]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const handleFetchModels = useCallback(() => {
+    const key = apiKey || '__USE_STORED__';
+    const hasKey = apiKey || data?.data?.config?.hasApiKey;
+    if (!hasKey) return;
+
+    modelsMutation.mutate(
+      {
+        provider,
+        apiKey: key,
+        ollamaEndpoint: provider === 'ollama' ? ollamaEndpoint : undefined,
+      },
+      {
+        onSuccess: (response) => {
+          const models = response?.data?.models;
+          if (models && Array.isArray(models)) {
+            setDynamicModels(models as DynamicModel[]);
+          }
+        },
+      }
+    );
+  }, [apiKey, provider, ollamaEndpoint, data?.data?.config?.hasApiKey, modelsMutation]);
 
   const handleSave = () => {
     if (!apiKey && !data?.data?.config?.hasApiKey) return;
@@ -76,9 +111,11 @@ export function AISettingsSection() {
     setFeatures((prev) => ({ ...prev, [feature]: !prev[feature] }));
   };
 
-  const models = DEFAULT_MODELS[provider] || [];
-  const maskedKey = data?.data?.maskedApiKey;
+  // Use dynamic models if available, otherwise fall back to defaults
+  const fallbackModels = DEFAULT_MODELS[provider] || [];
   const hasExistingKey = !!data?.data?.config?.hasApiKey;
+  const maskedKey = data?.data?.maskedApiKey;
+  const canFetchModels = apiKey || hasExistingKey;
 
   if (isLoading) {
     return (
@@ -120,6 +157,7 @@ export function AISettingsSection() {
               const newProvider = e.target.value as AIProvider;
               setProvider(newProvider);
               setModel('');
+              setDynamicModels([]);
             }}
             className="
               w-full h-10 px-3 rounded-lg text-sm
@@ -206,29 +244,7 @@ export function AISettingsSection() {
           )}
         </div>
 
-        {/* Model Selection */}
-        <div>
-          <label htmlFor="ai-model" className="block text-xs font-medium text-text-secondary mb-1.5">
-            模型
-          </label>
-          <select
-            id="ai-model"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="
-              w-full h-10 px-3 rounded-lg text-sm
-              bg-background-secondary text-text-primary border border-border
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background-tertiary
-            "
-          >
-            <option value="">預設模型</option>
-            {models.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Ollama Endpoint */}
+        {/* Ollama Endpoint (before model selection so models can use the endpoint) */}
         {provider === 'ollama' && (
           <div>
             <label htmlFor="ai-ollama-endpoint" className="block text-xs font-medium text-text-secondary mb-1.5">
@@ -249,6 +265,75 @@ export function AISettingsSection() {
             />
           </div>
         )}
+
+        {/* Model Selection */}
+        <div>
+          <label htmlFor="ai-model" className="block text-xs font-medium text-text-secondary mb-1.5">
+            模型
+          </label>
+          <div className="flex gap-2">
+            <select
+              id="ai-model"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="
+                flex-1 h-10 px-3 rounded-lg text-sm
+                bg-background-secondary text-text-primary border border-border
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background-tertiary
+              "
+            >
+              <option value="">預設模型</option>
+
+              {/* Dynamic models from API */}
+              {dynamicModels.length > 0 && (
+                <optgroup label="從 API 取得的模型">
+                  {dynamicModels.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </optgroup>
+              )}
+
+              {/* Fallback default models */}
+              {dynamicModels.length === 0 && fallbackModels.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={handleFetchModels}
+              disabled={modelsMutation.isPending || !canFetchModels}
+              className="
+                h-10 px-3 rounded-lg text-xs font-medium whitespace-nowrap
+                bg-background-secondary text-text-secondary border border-border
+                hover:bg-background-hover hover:text-text-primary
+                disabled:opacity-50 disabled:cursor-not-allowed
+                transition-colors
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background-tertiary
+              "
+              aria-label="從 API 取得可用模型列表"
+            >
+              {modelsMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+
+          {/* Models fetch result */}
+          {dynamicModels.length > 0 && (
+            <p className="mt-1.5 text-xs text-text-muted">
+              已取得 {dynamicModels.length} 個可用模型
+            </p>
+          )}
+          {modelsMutation.isError && (
+            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-error">
+              <AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />
+              {(modelsMutation.error as Error)?.message || '取得模型列表失敗'}
+            </div>
+          )}
+        </div>
 
         {/* Feature Toggles */}
         <div>
