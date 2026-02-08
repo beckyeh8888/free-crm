@@ -8,6 +8,7 @@
 
 import { useState, useRef } from 'react';
 import { X, Upload, FileText } from 'lucide-react';
+import { CustomerCombobox } from '@/components/ui/CustomerCombobox';
 import type { Document } from '@/hooks/useDocuments';
 
 export interface DocumentFormData {
@@ -23,6 +24,8 @@ interface DocumentFormProps {
   readonly onUpload?: (formData: FormData) => void;
   readonly onClose: () => void;
   readonly isSubmitting?: boolean;
+  readonly initialCustomerId?: string;
+  readonly initialCustomerName?: string;
 }
 
 const typeOptions = [
@@ -59,14 +62,14 @@ function getSubmitLabel(isSubmitting: boolean, isEdit: boolean): string {
   return '建立文件';
 }
 
-export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitting }: DocumentFormProps) {
+export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitting, initialCustomerId, initialCustomerName }: DocumentFormProps) {
   const isEdit = !!document;
   const [mode, setMode] = useState<InputMode>('text');
   const [formData, setFormData] = useState<DocumentFormData>({
     name: document?.name ?? '',
     type: document?.type ?? 'contract',
     content: document?.content ?? '',
-    customerId: document?.customerId ?? '',
+    customerId: document?.customerId ?? initialCustomerId ?? '',
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -265,16 +268,16 @@ export function DocumentForm({ document, onSubmit, onUpload, onClose, isSubmitti
             </div>
           )}
 
-          <FormField label="關聯客戶 ID（選填）" htmlFor="doc-customer">
-            <input
-              id="doc-customer"
-              type="text"
+          <div>
+            <span className="block text-sm font-medium text-text-secondary mb-1.5">
+              關聯客戶（選填）
+            </span>
+            <CustomerCombobox
               value={formData.customerId}
-              onChange={(e) => handleChange('customerId', e.target.value)}
-              className="form-input w-full"
-              placeholder="輸入客戶 ID"
+              initialName={document?.customer?.name ?? initialCustomerName}
+              onChange={(id) => handleChange('customerId', id)}
             />
-          </FormField>
+          </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">

@@ -12,7 +12,7 @@
 
 export type AIProvider = 'openai' | 'anthropic' | 'google' | 'ollama';
 
-export type AIFeature = 'chat' | 'document_analysis' | 'email_draft' | 'insights';
+export type AIFeature = 'chat' | 'document_analysis' | 'email_draft' | 'insights' | 'rag';
 
 export const AI_PROVIDERS: readonly { readonly value: AIProvider; readonly label: string }[] = [
   { value: 'openai', label: 'OpenAI' },
@@ -26,6 +26,7 @@ export const AI_FEATURES: readonly { readonly value: AIFeature; readonly label: 
   { value: 'document_analysis', label: '文件智能分析', description: '自動分析合約、會議紀錄、報價單等文件' },
   { value: 'email_draft', label: 'Email 草稿生成', description: '根據客戶/商機上下文自動產生 Email 草稿' },
   { value: 'insights', label: '銷售洞察', description: '分析商機管道，識別風險商機並建議行動' },
+  { value: 'rag', label: 'RAG 文件檢索', description: '語意搜尋文件、AI 對話自動引用相關文件內容' },
 ] as const;
 
 // ============================================
@@ -64,7 +65,31 @@ export interface AIConfig {
   readonly features: Record<AIFeature, boolean>;
   readonly ollamaEndpoint?: string;
   readonly hasApiKey: boolean; // never expose the actual key to client
+  readonly embeddingProvider?: AIProvider;
+  readonly embeddingModel?: string;
 }
+
+// ============================================
+// Embedding Constants (shared between client & server)
+// ============================================
+
+/** Providers that support embedding generation */
+export const EMBEDDING_CAPABLE_PROVIDERS = new Set<AIProvider>(['openai', 'google', 'ollama']);
+
+/** Default embedding models per provider */
+export const DEFAULT_EMBEDDING_MODELS: Partial<Record<AIProvider, readonly { readonly value: string; readonly label: string }[]>> = {
+  openai: [
+    { value: 'text-embedding-3-small', label: 'text-embedding-3-small (1536d)' },
+    { value: 'text-embedding-3-large', label: 'text-embedding-3-large (3072d)' },
+  ],
+  google: [
+    { value: 'text-embedding-004', label: 'text-embedding-004 (768d)' },
+  ],
+  ollama: [
+    { value: 'nomic-embed-text', label: 'nomic-embed-text (768d)' },
+    { value: 'mxbai-embed-large', label: 'mxbai-embed-large (1024d)' },
+  ],
+};
 
 // SystemSetting keys used for AI configuration
 export const AI_SETTING_KEYS = {
@@ -73,4 +98,6 @@ export const AI_SETTING_KEYS = {
   MODEL: 'ai_model',
   OLLAMA_ENDPOINT: 'ai_ollama_endpoint',
   FEATURES: 'ai_features',
+  EMBEDDING_PROVIDER: 'ai_embedding_provider',
+  EMBEDDING_MODEL: 'ai_embedding_model',
 } as const;

@@ -111,6 +111,33 @@ export async function getFileUrl(key: string): Promise<string> {
 }
 
 /**
+ * Download a file from S3/MinIO as a Buffer
+ * Used by the document text extraction pipeline.
+ */
+export async function getFileBuffer(key: string): Promise<Buffer> {
+  const client = getS3Client();
+
+  const response = await client.send(
+    new GetObjectCommand({
+      Bucket: S3_BUCKET,
+      Key: key,
+    })
+  );
+
+  if (!response.Body) {
+    throw new Error(`Empty response body for key: ${key}`);
+  }
+
+  // Convert readable stream to Buffer
+  const chunks: Uint8Array[] = [];
+  const stream = response.Body as AsyncIterable<Uint8Array>;
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
  * Delete a file from S3/MinIO
  */
 export async function deleteFile(key: string): Promise<void> {

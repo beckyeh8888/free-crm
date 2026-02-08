@@ -142,6 +142,8 @@ export const navItems = [
   { key: 'dashboard', label: '儀表板', href: '/dashboard', icon: 'LayoutDashboard' },
   { key: 'customers', label: '客戶', href: '/customers', icon: 'Users' },
   { key: 'deals', label: '商機', href: '/deals', icon: 'Handshake' },
+  { key: 'tasks', label: '任務', href: '/tasks', icon: 'CheckSquare' },
+  { key: 'projects', label: '專案', href: '/projects', icon: 'FolderKanban' },
   { key: 'calendar', label: '行事曆', href: '/calendar', icon: 'Calendar' },
   { key: 'documents', label: '文件', href: '/documents', icon: 'FileText' },
   { key: 'activities', label: '活動', href: '/activities', icon: 'Activity' },

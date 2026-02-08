@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   X,
   Pencil,
@@ -15,6 +16,7 @@ import {
   Percent,
   User,
   FileText,
+  AlertTriangle,
 } from 'lucide-react';
 import { DealForm, type DealFormData } from './DealForm';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
@@ -22,7 +24,6 @@ import {
   useDeal,
   useUpdateDeal,
   useDeleteDeal,
-  type Deal,
 } from '@/hooks/useDeals';
 import { pipelineColors, pipelineLabels } from '@/lib/design-tokens';
 
@@ -38,13 +39,23 @@ interface DealDetailDrawerProps {
 type DrawerState =
   | { type: 'view' }
   | { type: 'edit' }
-  | { type: 'delete' };
+  | { type: 'delete' }
+  | { type: 'loss_reason' };
 
 // ============================================
 // Constants
 // ============================================
 
 const stageOrder = ['lead', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'] as const;
+
+const lossReasons = [
+  { key: 'price', label: '價格因素' },
+  { key: 'competition', label: '競爭對手' },
+  { key: 'timing', label: '時機不對' },
+  { key: 'need', label: '需求消失' },
+  { key: 'budget', label: '預算不足' },
+  { key: 'other', label: '其他原因' },
+] as const;
 
 // ============================================
 // Helpers
@@ -66,6 +77,7 @@ function formatDate(dateStr: string | null): string {
 // ============================================
 
 export function DealDetailDrawer({ dealId, onClose }: DealDetailDrawerProps) {
+  const router = useRouter();
   const [drawerState, setDrawerState] = useState<DrawerState>({ type: 'view' });
 
   // Fetch latest deal data
@@ -181,10 +193,19 @@ export function DealDetailDrawer({ dealId, onClose }: DealDetailDrawerProps) {
                 </p>
               </section>
 
-              {/* Stage Progress */}
+              {/* Stage Progress — clickable to change stage */}
               <section aria-label="階段進度">
                 <h3 className="text-sm font-medium text-text-muted mb-3">階段進度</h3>
-                <StageProgress currentStage={deal.stage} />
+                <StageProgress
+                  currentStage={deal.stage}
+                  onStageChange={(newStage) => {
+                    if (newStage === 'closed_lost') {
+                      setDrawerState({ type: 'loss_reason' });
+                    } else {
+                      updateMutation.mutate({ id: dealId, stage: newStage });
+                    }
+                  }}
+                />
               </section>
 
               {/* Deal Info */}
@@ -206,13 +227,47 @@ export function DealDetailDrawer({ dealId, onClose }: DealDetailDrawerProps) {
                     label="幣別"
                     value={deal.currency}
                   />
-                  <InfoRow
-                    icon={<User className="w-4 h-4" />}
-                    label="客戶"
-                    value={deal.customer?.name ?? '-'}
-                  />
+                  {deal.customer ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/customers?id=${deal.customer?.id}`)}
+                      className="w-full text-left hover:bg-background-hover/50 rounded-lg transition-colors -mx-1 px-1"
+                    >
+                      <InfoRow
+                        icon={<User className="w-4 h-4" />}
+                        label="客戶"
+                        value={deal.customer.name}
+                      />
+                    </button>
+                  ) : (
+                    <InfoRow
+                      icon={<User className="w-4 h-4" />}
+                      label="客戶"
+                      value="-"
+                    />
+                  )}
                 </div>
               </section>
+
+              {/* Loss Reason (shown when closed_lost) */}
+              {deal.stage === 'closed_lost' && deal.lossReason && (
+                <section aria-label="失敗原因">
+                  <h3 className="text-sm font-medium text-text-muted mb-3">失敗原因</h3>
+                  <div className="bg-error/5 border border-error/20 rounded-lg p-3">
+                    <div className="flex gap-2">
+                      <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-text-primary">
+                          {lossReasons.find((r) => r.key === deal.lossReason)?.label ?? deal.lossReason}
+                        </p>
+                        {deal.lossNotes && (
+                          <p className="text-sm text-text-secondary mt-1 whitespace-pre-wrap">{deal.lossNotes}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {/* Notes */}
               {deal.notes && (
@@ -273,6 +328,21 @@ export function DealDetailDrawer({ dealId, onClose }: DealDetailDrawerProps) {
           warningMessage="刪除商機後將無法恢復。"
         />
       )}
+
+      {/* Loss Reason Modal */}
+      {drawerState.type === 'loss_reason' && deal && (
+        <LossReasonModal
+          dealTitle={deal.title}
+          isSubmitting={updateMutation.isPending}
+          onSubmit={(reason, notes) => {
+            updateMutation.mutate(
+              { id: dealId, stage: 'closed_lost', lossReason: reason, lossNotes: notes || null },
+              { onSuccess: () => setDrawerState({ type: 'view' }) }
+            );
+          }}
+          onCancel={() => setDrawerState({ type: 'view' })}
+        />
+      )}
     </>
   );
 }
@@ -283,36 +353,91 @@ export function DealDetailDrawer({ dealId, onClose }: DealDetailDrawerProps) {
 
 interface StageProgressProps {
   readonly currentStage: string;
+  readonly onStageChange?: (stage: string) => void;
 }
 
-function StageProgress({ currentStage }: StageProgressProps) {
+function StageProgress({ currentStage, onStageChange }: StageProgressProps) {
   const currentIndex = stageOrder.indexOf(currentStage as typeof stageOrder[number]);
+  const [confirmStage, setConfirmStage] = useState<string | null>(null);
+
+  const handleStageClick = (stage: string) => {
+    if (!onStageChange) return;
+    if (stage === currentStage) return;
+    setConfirmStage(stage);
+  };
+
+  const handleConfirm = () => {
+    if (confirmStage && onStageChange) {
+      onStageChange(confirmStage);
+      setConfirmStage(null);
+    }
+  };
 
   return (
-    <div className="flex gap-1">
-      {stageOrder.map((stage, index) => {
-        const color = pipelineColors[stage];
-        const label = pipelineLabels[stage] ?? stage;
-        const isActive = index <= currentIndex;
+    <div>
+      <div className="flex gap-1">
+        {stageOrder.map((stage, index) => {
+          const color = pipelineColors[stage];
+          const label = pipelineLabels[stage] ?? stage;
+          const isActive = index <= currentIndex;
+          const isCurrent = index === currentIndex;
+          const isClickable = onStageChange && stage !== currentStage;
 
-        return (
-          <div key={stage} className="flex-1 min-w-0">
-            <div
-              className="h-2 rounded-full transition-colors"
-              style={{ backgroundColor: isActive ? color : '#2a2a2a' }}
-              title={label}
-              aria-hidden="true"
-            />
-            <p
-              className={`text-[10px] mt-1 truncate text-center ${
-                index === currentIndex ? 'text-text-primary font-medium' : 'text-text-muted'
-              }`}
+          function getLabelClass(): string {
+            if (isCurrent) return 'text-text-primary font-medium';
+            if (isClickable) return 'text-text-muted group-hover:text-text-primary';
+            return 'text-text-muted';
+          }
+
+          return (
+            <button
+              key={stage}
+              type="button"
+              onClick={() => handleStageClick(stage)}
+              disabled={!isClickable}
+              className={`flex-1 min-w-0 group ${isClickable ? 'cursor-pointer' : 'cursor-default'}`}
+              aria-label={`移動到${label}階段`}
+              title={isClickable ? `移動到「${label}」` : label}
             >
-              {label}
-            </p>
+              <div
+                className={`h-2 rounded-full transition-all ${isClickable ? 'group-hover:h-3' : ''}`}
+                style={{ backgroundColor: isActive ? color : '#2a2a2a' }}
+                aria-hidden="true"
+              />
+              <p
+                className={`text-[10px] mt-1 truncate text-center transition-colors ${getLabelClass()}`}
+              >
+                {label}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Confirmation Popover */}
+      {confirmStage && (
+        <div className="mt-3 p-3 bg-background-secondary border border-border rounded-lg flex items-center justify-between gap-3">
+          <p className="text-sm text-text-secondary">
+            移動到「{pipelineLabels[confirmStage] ?? confirmStage}」？
+          </p>
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setConfirmStage(null)}
+              className="px-3 py-1.5 text-sm rounded-lg text-text-muted hover:bg-background-hover transition-colors min-h-[32px]"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="px-3 py-1.5 text-sm rounded-lg bg-accent-600 text-white hover:bg-accent-700 transition-colors min-h-[32px]"
+            >
+              確認
+            </button>
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 }
@@ -336,6 +461,114 @@ function InfoRow({ icon, label, value }: InfoRowProps) {
         <p className="text-sm text-text-primary truncate">{value}</p>
       </div>
     </div>
+  );
+}
+
+// ============================================
+// LossReasonModal
+// ============================================
+
+interface LossReasonModalProps {
+  readonly dealTitle: string;
+  readonly isSubmitting: boolean;
+  readonly onSubmit: (reason: string, notes: string) => void;
+  readonly onCancel: () => void;
+}
+
+function LossReasonModal({ dealTitle, isSubmitting, onSubmit, onCancel }: LossReasonModalProps) {
+  const [reason, setReason] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!reason) return;
+    onSubmit(reason, notes);
+  };
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 bg-black/60 z-[60]"
+        onClick={onCancel}
+        aria-hidden="true"
+      />
+      <dialog
+        open
+        className="fixed inset-0 m-auto w-full max-w-md h-fit bg-background border border-border rounded-xl shadow-xl z-[70] p-0"
+        aria-label={`${dealTitle} — 記錄失敗原因`}
+      >
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-text-primary">記錄失敗原因</h2>
+            <p className="text-sm text-text-muted mt-1">
+              將「{dealTitle}」標記為流失，請選擇原因。
+            </p>
+          </div>
+
+          <fieldset>
+            <legend className="text-sm font-medium text-text-secondary mb-2">失敗原因</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {lossReasons.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setReason(item.key)}
+                  className={`
+                    px-3 py-2.5 rounded-lg text-sm text-left transition-colors min-h-[44px]
+                    ${reason === item.key
+                      ? 'bg-error/15 border-error/50 text-error border'
+                      : 'bg-background-hover/50 border border-border text-text-secondary hover:bg-background-hover'
+                    }
+                  `}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <div>
+            <label htmlFor="loss-notes" className="text-sm font-medium text-text-secondary block mb-1">
+              補充說明（選填）
+            </label>
+            <textarea
+              id="loss-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="
+                w-full px-3 py-2 rounded-lg bg-background-secondary border border-border
+                text-text-primary text-sm resize-none
+                focus:outline-none focus:ring-2 focus:ring-accent-600
+              "
+              rows={3}
+              maxLength={2000}
+              placeholder="例如：客戶轉向競爭對手 X 的方案..."
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2.5 rounded-lg text-sm text-text-muted hover:bg-background-hover transition-colors min-h-[44px]"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={!reason || isSubmitting}
+              className="
+                px-4 py-2.5 rounded-lg text-sm font-medium min-h-[44px]
+                bg-error text-white hover:bg-error/90 transition-colors
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
+            >
+              {isSubmitting ? '處理中...' : '確認流失'}
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </>
   );
 }
 

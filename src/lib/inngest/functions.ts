@@ -15,9 +15,16 @@ import { TaskReminder } from '@/emails/TaskReminder';
 import { DealStageChange } from '@/emails/DealStageChange';
 import { WelcomeEmail } from '@/emails/WelcomeEmail';
 import { generateText } from 'ai';
-import { getAIModel, isAIConfigured } from '@/lib/ai/provider';
+import { getAIModel, isAIConfigured, isFeatureEnabled } from '@/lib/ai/provider';
 import { getDocumentAnalysisPrompt } from '@/lib/ai/prompts/document';
 import { handleAIError } from '@/lib/ai/errors';
+import { getFileBuffer } from '@/lib/storage';
+import { extractText, isSupportedMimeType } from '@/lib/document-parser';
+import { chunkText } from '@/lib/rag/chunker';
+import { generateEmbeddings, isEmbeddingConfigured } from '@/lib/ai/embedding';
+import { invalidateEmbeddingCache } from '@/lib/rag/vector-search';
+import { ragQuery } from '@/lib/rag/pipeline';
+import { classifyDocument } from '@/lib/rag/classifier';
 
 /**
  * Document Analysis Function
@@ -33,6 +40,7 @@ export const analyzeDocument = inngest.createFunction(
   {
     id: 'analyze-document',
     retries: 3,
+    idempotency: 'event.data.documentId + "-" + event.data.userId',
     onFailure: async ({ error, event }) => {
       // Log failure to audit log
       console.error('Document analysis failed:', error);
@@ -140,10 +148,24 @@ export const analyzeDocument = inngest.createFunction(
         const model = await getAIModel(organizationId);
         const systemPrompt = getDocumentAnalysisPrompt(analysisType);
 
+        // Fetch RAG context from related documents (only if RAG feature enabled)
+        let ragContext = '';
+        const ragEnabled = await isFeatureEnabled(organizationId, 'rag');
+        if (ragEnabled) {
+          try {
+            const ragResult = await ragQuery(organizationId, content.slice(0, 500), { topK: 3 });
+            if (ragResult?.context) {
+              ragContext = `\n\n---\n相關文件上下文：\n${ragResult.context}`;
+            }
+          } catch {
+            // RAG failure is non-blocking
+          }
+        }
+
         const result = await generateText({
           model,
           system: systemPrompt,
-          prompt: content,
+          prompt: `${content}${ragContext}`,
           maxOutputTokens: 2000,
         });
 
@@ -222,6 +244,305 @@ export const analyzeDocument = inngest.createFunction(
       success: true,
       analysisId: analysis.id,
       documentId,
+    };
+  }
+);
+
+// ============================================
+// RAG Pipeline: Text Extraction + Chunking
+// ============================================
+
+/**
+ * Extract Text from Document File
+ *
+ * Triggered when: document/text.extract event is sent (after file upload)
+ * Steps:
+ * 1. Download file from MinIO
+ * 2. Extract text using document-parser
+ * 3. Chunk the extracted text
+ * 4. Save chunks and update document
+ * 5. Optionally trigger embedding
+ */
+export const extractDocumentText = inngest.createFunction(
+  {
+    id: 'extract-document-text',
+    retries: 2,
+    idempotency: 'event.data.documentId',
+    onFailure: async ({ error, event }) => {
+      console.error('Document text extraction failed:', error);
+      const eventData = event.data as Record<string, unknown>;
+      const documentId = eventData?.documentId as string | undefined;
+
+      if (documentId) {
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { extractionStatus: 'failed' },
+        });
+      }
+    },
+  },
+  { event: 'document/text.extract' },
+  async ({ event, step }) => {
+    const { documentId, organizationId, filePath, mimeType } = event.data;
+
+    // Step 1: Mark as processing and validate
+    await step.run('mark-processing', async () => {
+      await prisma.document.update({
+        where: { id: documentId },
+        data: { extractionStatus: 'processing' },
+      });
+    });
+
+    // Step 2: Check MIME type support
+    const supported = isSupportedMimeType(mimeType);
+    if (!supported) {
+      await step.run('mark-unsupported', async () => {
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { extractionStatus: 'unsupported' },
+        });
+      });
+      return { success: false, reason: 'unsupported_mime_type', mimeType };
+    }
+
+    // Step 3: Download file and extract text
+    const extractionResult = await step.run('extract-text', async () => {
+      const buffer = await getFileBuffer(filePath);
+      const result = await extractText(buffer, mimeType);
+
+      if (!result) {
+        // Likely a scanned PDF or empty file
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { extractionStatus: 'unsupported' },
+        });
+        return null;
+      }
+
+      // Save extracted text to Document.content
+      await prisma.document.update({
+        where: { id: documentId },
+        data: {
+          content: result.text,
+          extractionStatus: 'completed',
+          extractedAt: new Date(),
+        },
+      });
+
+      return { wordCount: result.wordCount, textLength: result.text.length };
+    });
+
+    if (!extractionResult) {
+      return { success: false, reason: 'no_text_extracted' };
+    }
+
+    // Step 4: Chunk the extracted text
+    const chunkResult = await step.run('chunk-text', async () => {
+      const doc = await prisma.document.findUnique({
+        where: { id: documentId },
+        select: { content: true },
+      });
+
+      if (!doc?.content) return { chunkCount: 0 };
+
+      const chunks = chunkText(doc.content);
+
+      // Delete old chunks if re-processing
+      await prisma.documentChunk.deleteMany({
+        where: { documentId },
+      });
+
+      // Bulk insert chunks
+      if (chunks.length > 0) {
+        await prisma.documentChunk.createMany({
+          data: chunks.map((chunk) => ({
+            documentId,
+            organizationId,
+            content: chunk.content,
+            chunkIndex: chunk.chunkIndex,
+            startOffset: chunk.startOffset,
+            endOffset: chunk.endOffset,
+          })),
+        });
+      }
+
+      return { chunkCount: chunks.length };
+    });
+
+    // Step 5: Send completion event
+    await inngest.send({
+      name: 'document/text.extract.completed',
+      data: {
+        documentId,
+        organizationId,
+        wordCount: extractionResult.wordCount,
+        chunkCount: chunkResult.chunkCount,
+      },
+    });
+
+    // Step 6: Auto-classify document type
+    await step.run('auto-classify', async () => {
+      const doc = await prisma.document.findUnique({
+        where: { id: documentId },
+        select: { content: true, type: true },
+      });
+
+      if (!doc?.content) return;
+
+      const classifiedType = await classifyDocument(organizationId, doc.content);
+      if (classifiedType && classifiedType !== doc.type) {
+        await prisma.document.update({
+          where: { id: documentId },
+          data: { type: classifiedType },
+        });
+      }
+    });
+
+    // Step 7: Auto-trigger embedding if configured
+    await step.run('trigger-embedding', async () => {
+      // Only trigger if chunks were created
+      if (chunkResult.chunkCount > 0) {
+        await inngest.send({
+          name: 'document/embed.requested',
+          data: { documentId, organizationId },
+        });
+      }
+    });
+
+    return {
+      success: true,
+      documentId,
+      wordCount: extractionResult.wordCount,
+      chunkCount: chunkResult.chunkCount,
+    };
+  }
+);
+
+// ============================================
+// RAG Pipeline: Embedding Generation
+// ============================================
+
+/**
+ * Generate Embeddings for Document Chunks
+ *
+ * Triggered when: document/embed.requested event is sent (after text extraction + chunking)
+ * Steps:
+ * 1. Check embedding is configured
+ * 2. Load document chunks
+ * 3. Generate embeddings in batches
+ * 4. Save embeddings to chunks
+ * 5. Send completion event
+ */
+export const embedDocumentChunks = inngest.createFunction(
+  {
+    id: 'embed-document-chunks',
+    retries: 2,
+    idempotency: 'event.data.documentId',
+    onFailure: async ({ error, event }) => {
+      console.error('Document embedding failed:', error);
+      const eventData = event.data as Record<string, unknown>;
+      const documentId = eventData?.documentId as string | undefined;
+      const organizationId = eventData?.organizationId as string | undefined;
+
+      if (documentId) {
+        await prisma.auditLog.create({
+          data: {
+            action: 'update',
+            entity: 'document_embedding',
+            entityId: documentId,
+            organizationId,
+            details: JSON.stringify({
+              status: 'failed',
+              error: error.message,
+            }),
+          },
+        });
+      }
+    },
+  },
+  { event: 'document/embed.requested' },
+  async ({ event, step }) => {
+    const { documentId, organizationId } = event.data;
+
+    // Step 1: Check embedding is configured
+    const configured = await step.run('check-embedding-config', async () => {
+      return isEmbeddingConfigured(organizationId);
+    });
+
+    if (!configured) {
+      return { success: false, reason: 'embedding_not_configured' };
+    }
+
+    // Step 2: Load chunks without embeddings
+    const chunks = await step.run('load-chunks', async () => {
+      return prisma.documentChunk.findMany({
+        where: { documentId },
+        select: { id: true, content: true },
+        orderBy: { chunkIndex: 'asc' },
+      });
+    });
+
+    if (chunks.length === 0) {
+      return { success: false, reason: 'no_chunks' };
+    }
+
+    // Step 3: Generate embeddings in batches (max 50 per batch for API limits)
+    const BATCH_SIZE = 50;
+    let embeddedCount = 0;
+    let embeddingModel = '';
+
+    for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+      const batch = chunks.slice(i, i + BATCH_SIZE);
+      const batchIndex = Math.floor(i / BATCH_SIZE);
+
+      await step.run(`embed-batch-${batchIndex}`, async () => {
+        const texts = batch.map((c) => c.content);
+        const result = await generateEmbeddings(organizationId, texts);
+
+        if (!result) {
+          throw new Error('Embedding generation returned null');
+        }
+
+        embeddingModel = result.model;
+
+        // Update each chunk with its embedding
+        for (let j = 0; j < batch.length; j++) {
+          await prisma.documentChunk.update({
+            where: { id: batch[j].id },
+            data: {
+              embedding: JSON.stringify(result.embeddings[j]),
+              embeddingModel: result.model,
+              embeddingDims: result.dimensions,
+              embeddedAt: new Date(),
+            },
+          });
+        }
+
+        embeddedCount += batch.length;
+      });
+    }
+
+    // Step 4: Invalidate embedding cache for this org
+    await step.run('invalidate-cache', async () => {
+      invalidateEmbeddingCache(organizationId);
+    });
+
+    // Step 5: Send completion event
+    await inngest.send({
+      name: 'document/embed.completed',
+      data: {
+        documentId,
+        organizationId,
+        chunkCount: embeddedCount,
+        embeddingModel,
+      },
+    });
+
+    return {
+      success: true,
+      documentId,
+      chunksEmbedded: embeddedCount,
+      embeddingModel,
     };
   }
 );
@@ -563,9 +884,102 @@ export const checkTaskReminders = inngest.createFunction(
   }
 );
 
+// ============================================
+// Completion Event Handlers (Sprint E)
+// ============================================
+
+/**
+ * Handle Document Analysis Completion
+ *
+ * Triggered when: document/analyze.completed event is sent
+ * Creates an in-app notification for the user who requested the analysis.
+ */
+export const handleAnalyzeCompleted = inngest.createFunction(
+  {
+    id: 'handle-analyze-completed',
+    retries: 2,
+  },
+  { event: 'document/analyze.completed' },
+  async ({ event, step }) => {
+    const { documentId, userId, organizationId } = event.data;
+
+    if (!userId) return { success: false, reason: 'no_user_id' };
+
+    await step.run('create-notification', async () => {
+      const doc = await prisma.document.findUnique({
+        where: { id: documentId },
+        select: { name: true },
+      });
+
+      await createInAppNotification({
+        userId,
+        type: 'document_analysis',
+        title: '文件分析完成',
+        message: `「${doc?.name ?? '文件'}」的 AI 分析已完成`,
+        linkUrl: `/documents?id=${documentId}`,
+        metadata: { documentId, organizationId },
+      });
+    });
+
+    return { success: true, documentId };
+  }
+);
+
+/**
+ * Handle Document Embedding Completion
+ *
+ * Triggered when: document/embed.completed event is sent
+ * Creates an in-app notification that embedding is ready.
+ */
+export const handleEmbedCompleted = inngest.createFunction(
+  {
+    id: 'handle-embed-completed',
+    retries: 2,
+  },
+  { event: 'document/embed.completed' },
+  async ({ event, step }) => {
+    const { documentId, organizationId, chunkCount } = event.data;
+
+    await step.run('create-notification', async () => {
+      // Find organization owner/admin to notify
+      const admins = await prisma.organizationMember.findMany({
+        where: {
+          organizationId,
+          role: { name: { in: ['owner', 'admin'] } },
+          status: 'active',
+        },
+        select: { userId: true },
+        take: 3,
+      });
+
+      const doc = await prisma.document.findUnique({
+        where: { id: documentId },
+        select: { name: true },
+      });
+
+      for (const admin of admins) {
+        await createInAppNotification({
+          userId: admin.userId,
+          type: 'document_embedding',
+          title: '文件索引完成',
+          message: `「${doc?.name ?? '文件'}」已完成向量索引（${chunkCount} 個區塊）`,
+          linkUrl: `/documents?id=${documentId}`,
+          metadata: { documentId, chunkCount },
+        });
+      }
+    });
+
+    return { success: true, documentId };
+  }
+);
+
 // Export all functions for the serve handler
 export const functions = [
   analyzeDocument,
+  extractDocumentText,
+  embedDocumentChunks,
+  handleAnalyzeCompleted,
+  handleEmbedCompleted,
   sendTaskReminderEmail,
   sendDealNotification,
   sendWelcomeEmailFn,

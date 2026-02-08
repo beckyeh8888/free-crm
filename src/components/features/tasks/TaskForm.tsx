@@ -12,6 +12,7 @@ import {
   taskPriorityLabels,
   taskStatusLabels,
 } from '@/lib/design-tokens';
+import { CustomerCombobox } from '@/components/ui/CustomerCombobox';
 import type { Task } from '@/hooks/useTasks';
 
 interface TaskFormProps {
@@ -20,6 +21,8 @@ interface TaskFormProps {
   readonly onClose: () => void;
   readonly isSubmitting?: boolean;
   readonly initialDate?: Date;
+  readonly initialCustomerId?: string;
+  readonly initialCustomerName?: string;
 }
 
 export interface TaskFormData {
@@ -60,6 +63,8 @@ export function TaskForm({
   onClose,
   isSubmitting,
   initialDate,
+  initialCustomerId,
+  initialCustomerName,
 }: TaskFormProps) {
   const [formData, setFormData] = useState<TaskFormData>({
     title: task?.title || '',
@@ -73,7 +78,7 @@ export function TaskForm({
     isAllDay: task?.isAllDay ?? true,
     progress: task?.progress ?? 0,
     projectId: task?.project?.id || '',
-    customerId: task?.customer?.id || '',
+    customerId: task?.customer?.id || initialCustomerId || '',
     dealId: task?.deal?.id || '',
   });
 
@@ -238,6 +243,16 @@ export function TaskForm({
               rows={3}
             />
           </label>
+
+          {/* Customer Picker */}
+          <div className="block">
+            <span className="text-sm text-text-secondary mb-1 block">客戶（選填）</span>
+            <CustomerCombobox
+              value={formData.customerId}
+              initialName={task?.customer?.name ?? initialCustomerName}
+              onChange={(id) => handleChange('customerId', id)}
+            />
+          </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">

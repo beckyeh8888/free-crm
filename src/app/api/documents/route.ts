@@ -26,6 +26,8 @@ import {
 } from '@/lib/validation';
 import { getUserDefaultOrganization } from '@/lib/rbac';
 import { uploadFile, generateFileKey } from '@/lib/storage';
+import { inngest } from '@/lib/inngest/client';
+import { isSupportedMimeType } from '@/lib/document-parser';
 
 /**
  * GET /api/documents
@@ -88,6 +90,8 @@ export async function GET(request: NextRequest) {
         filePath: true,
         fileSize: true,
         mimeType: true,
+        extractionStatus: true,
+        extractedAt: true,
         createdAt: true,
         updatedAt: true,
         customerId: true,
@@ -114,6 +118,32 @@ export async function GET(request: NextRequest) {
 
   return listResponse(documents, { page, limit, total });
 }
+
+// ============================================
+// Upload Validation Constants
+// ============================================
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'text/plain',
+  'text/csv',
+  'text/markdown',
+  'application/json',
+]);
+
+const MIME_EXTENSION_MAP: Record<string, readonly string[]> = {
+  'application/pdf': ['.pdf'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+  'text/plain': ['.txt', '.text'],
+  'text/csv': ['.csv'],
+  'text/markdown': ['.md', '.markdown'],
+  'application/json': ['.json'],
+};
 
 // ============================================
 // Helper Types for Document Creation
@@ -165,6 +195,23 @@ async function parseFormDataInput(
 
   if (!file) {
     return { data: { name, type }, error: errorResponse('VALIDATION_ERROR', '請選擇要上傳的檔案') };
+  }
+
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE) {
+    return { data: { name, type }, error: errorResponse('VALIDATION_ERROR', `檔案大小超過限制 (最大 ${MAX_FILE_SIZE / 1024 / 1024} MB)`) };
+  }
+
+  // Validate MIME type
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return { data: { name, type }, error: errorResponse('VALIDATION_ERROR', `不支援的檔案類型: ${file.type}。支援格式: PDF, DOCX, XLSX, TXT, CSV, MD`) };
+  }
+
+  // Validate extension matches MIME type
+  const ext = '.' + (file.name.split('.').pop()?.toLowerCase() ?? '');
+  const allowedExts = MIME_EXTENSION_MAP[file.type];
+  if (allowedExts && !allowedExts.includes(ext)) {
+    return { data: { name, type }, error: errorResponse('VALIDATION_ERROR', `檔案副檔名 (${ext}) 與類型 (${file.type}) 不符`) };
   }
 
   const orgId = await resolveOrganizationId(request, userId, bodyOrgId);
@@ -268,6 +315,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Determine extraction status for file uploads
+    const needsExtraction = !!filePath && !!mimeType && isSupportedMimeType(mimeType);
+
     // Create document
     const document = await prisma.document.create({
       data: {
@@ -277,6 +327,7 @@ export async function POST(request: NextRequest) {
         filePath,
         fileSize,
         mimeType,
+        extractionStatus: needsExtraction ? 'pending' : undefined,
         customerId: customerId ?? null,
         organizationId,
       },
@@ -288,12 +339,31 @@ export async function POST(request: NextRequest) {
         filePath: true,
         fileSize: true,
         mimeType: true,
+        extractionStatus: true,
         customerId: true,
         organizationId: true,
         createdAt: true,
         updatedAt: true,
       },
     });
+
+    // Trigger text extraction for file uploads via Inngest
+    if (needsExtraction && filePath && mimeType) {
+      try {
+        await inngest.send({
+          name: 'document/text.extract',
+          data: {
+            documentId: document.id,
+            organizationId,
+            filePath,
+            mimeType,
+          },
+        });
+      } catch (err) {
+        // Non-blocking: extraction failure shouldn't prevent document creation
+        console.error('Failed to queue text extraction:', err);
+      }
+    }
 
     // Log audit event
     await logAudit({
@@ -307,6 +377,7 @@ export async function POST(request: NextRequest) {
         type: document.type,
         hasFile: !!filePath,
         fileSize,
+        extractionQueued: needsExtraction,
       },
       request,
     });

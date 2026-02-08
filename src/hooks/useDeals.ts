@@ -15,6 +15,8 @@ export interface Deal {
   readonly closeDate: string | null;
   readonly closedAt: string | null;
   readonly notes: string | null;
+  readonly lossReason: string | null;
+  readonly lossNotes: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly customerId: string;
@@ -48,6 +50,7 @@ interface DealParams {
   readonly limit?: number;
   readonly stage?: string;
   readonly search?: string;
+  readonly customerId?: string;
 }
 
 export function useDeals(params: DealParams = {}) {
@@ -56,6 +59,7 @@ export function useDeals(params: DealParams = {}) {
   if (params.limit) queryParams.limit = String(params.limit);
   if (params.stage) queryParams.stage = params.stage;
   if (params.search) queryParams.search = params.search;
+  if (params.customerId) queryParams.customerId = params.customerId;
 
   return useQuery({
     queryKey: ['deals', params],

@@ -14,11 +14,12 @@ import {
   errorResponse,
   logAudit,
 } from '@/lib/api-utils';
-import { getAIModel, requireAIFeature } from '@/lib/ai/provider';
+import { getAIModel, requireAIFeature, isFeatureEnabled } from '@/lib/ai/provider';
 import { buildChatSystemPrompt } from '@/lib/ai/prompts/chat';
 import { getCRMContext } from '@/lib/ai/crm-context';
 import { checkAIChatRateLimit } from '@/lib/ai/rate-limit';
 import { handleAIError } from '@/lib/ai/errors';
+import { ragQuery } from '@/lib/rag/pipeline';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
@@ -104,10 +105,24 @@ export async function POST(request: NextRequest) {
       organizationName: org?.name || '組織',
     });
 
+    // RAG document context (only if RAG feature is enabled)
+    let ragContext = '';
+    const ragEnabled = await isFeatureEnabled(organizationId, 'rag');
+    if (ragEnabled) {
+      try {
+        const ragResult = await ragQuery(organizationId, query, { topK: 3 });
+        if (ragResult?.context) {
+          ragContext = `\n\n---\n\n${ragResult.context}`;
+        }
+      } catch {
+        // RAG failure is non-blocking — continue without document context
+      }
+    }
+
     // Stream the response — convert UIMessage parts to plain content for AI model
     const result = streamText({
       model,
-      system: `${systemPrompt}\n\n---\n\n以下是與查詢相關的 CRM 資料：\n\n${crmContext}`,
+      system: `${systemPrompt}\n\n---\n\n以下是與查詢相關的 CRM 資料：\n\n${crmContext}${ragContext}`,
       messages: messages.map((m) => ({
         role: m.role as 'user' | 'assistant' | 'system',
         content: extractContent(m),

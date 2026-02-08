@@ -9,7 +9,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Check, AlertCircle, Loader2, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Sparkles, Check, AlertCircle, Loader2, Eye, EyeOff, RefreshCw, Database } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import { apiClient } from '@/services/api';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import {
   useAIConfig,
@@ -17,7 +19,7 @@ import {
   useTestAIConnection,
   useAIModels,
 } from '@/hooks/useAISettings';
-import { AI_PROVIDERS, DEFAULT_MODELS, AI_FEATURES } from '@/lib/ai/types';
+import { AI_PROVIDERS, DEFAULT_MODELS, AI_FEATURES, EMBEDDING_CAPABLE_PROVIDERS, DEFAULT_EMBEDDING_MODELS } from '@/lib/ai/types';
 import type { AIProvider, AIFeature } from '@/lib/ai/types';
 
 interface DynamicModel {
@@ -30,6 +32,9 @@ export function AISettingsSection() {
   const updateMutation = useUpdateAIConfig();
   const testMutation = useTestAIConnection();
   const modelsMutation = useAIModels();
+  const reindexMutation = useMutation({
+    mutationFn: () => apiClient.post<{ readonly success: boolean; readonly data: { readonly reindexed: number; readonly message: string } }>('/api/documents/reindex', {}),
+  });
 
   // Form state
   const [provider, setProvider] = useState<AIProvider>('openai');
@@ -42,7 +47,12 @@ export function AISettingsSection() {
     document_analysis: true,
     email_draft: true,
     insights: true,
+    rag: false,
   });
+
+  // Embedding state
+  const [embeddingProvider, setEmbeddingProvider] = useState<AIProvider | ''>('');
+  const [embeddingModel, setEmbeddingModel] = useState('');
 
   // Dynamic models
   const [dynamicModels, setDynamicModels] = useState<DynamicModel[]>([]);
@@ -54,9 +64,16 @@ export function AISettingsSection() {
       const config = data.data.config;
       setProvider(config.provider);
       setModel(config.model);
-      setFeatures(config.features);
+      const defaultFeatures = { chat: true, document_analysis: true, email_draft: true, insights: true, rag: false };
+      setFeatures({ ...defaultFeatures, ...config.features });
       if (config.ollamaEndpoint) {
         setOllamaEndpoint(config.ollamaEndpoint);
+      }
+      if (config.embeddingProvider) {
+        setEmbeddingProvider(config.embeddingProvider);
+      }
+      if (config.embeddingModel) {
+        setEmbeddingModel(config.embeddingModel);
       }
     }
   }, [data]);
@@ -93,6 +110,8 @@ export function AISettingsSection() {
       model: model || undefined,
       ollamaEndpoint: provider === 'ollama' ? ollamaEndpoint : undefined,
       features,
+      embeddingProvider: embeddingProvider || undefined,
+      embeddingModel: embeddingModel || undefined,
     });
   };
 
@@ -357,6 +376,117 @@ export function AISettingsSection() {
           </div>
         </div>
 
+        {/* Embedding Configuration */}
+        {features.rag && (
+          <div className="border-t border-border-subtle pt-4">
+            <h3 className="text-xs font-medium text-text-muted uppercase tracking-wide mb-3">
+              Embedding 設定（RAG 向量索引）
+            </h3>
+            <p className="text-xs text-text-muted mb-3">
+              設定 Embedding 供應商以啟用語意搜尋和 RAG 文件檢索。留空則使用主 AI 供應商（Anthropic 不支援 Embedding）。
+            </p>
+            <div className="space-y-3">
+              {/* Embedding Provider */}
+              <div>
+                <label htmlFor="embedding-provider" className="block text-xs font-medium text-text-secondary mb-1.5">
+                  Embedding 供應商
+                </label>
+                <select
+                  id="embedding-provider"
+                  value={embeddingProvider}
+                  onChange={(e) => {
+                    const val = e.target.value as AIProvider | '';
+                    setEmbeddingProvider(val);
+                    setEmbeddingModel('');
+                  }}
+                  className="
+                    w-full h-10 px-3 rounded-lg text-sm
+                    bg-background-secondary text-text-primary border border-border
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background-tertiary
+                  "
+                >
+                  <option value="">跟隨主供應商</option>
+                  {AI_PROVIDERS.filter((p) => EMBEDDING_CAPABLE_PROVIDERS.has(p.value)).map((p) => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Embedding Model */}
+              <div>
+                <label htmlFor="embedding-model" className="block text-xs font-medium text-text-secondary mb-1.5">
+                  Embedding 模型
+                </label>
+                <select
+                  id="embedding-model"
+                  value={embeddingModel}
+                  onChange={(e) => setEmbeddingModel(e.target.value)}
+                  className="
+                    w-full h-10 px-3 rounded-lg text-sm
+                    bg-background-secondary text-text-primary border border-border
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background-tertiary
+                  "
+                >
+                  <option value="">預設模型</option>
+                  {(() => {
+                    const effectiveProvider = embeddingProvider || provider;
+                    const models = DEFAULT_EMBEDDING_MODELS[effectiveProvider] || [];
+                    return models.map((m) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ));
+                  })()}
+                </select>
+              </div>
+
+              {/* Warning for Anthropic */}
+              {!embeddingProvider && !EMBEDDING_CAPABLE_PROVIDERS.has(provider) && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-400">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  <span>{provider === 'anthropic' ? 'Anthropic' : provider} 不支援 Embedding。請選擇獨立的 Embedding 供應商（OpenAI / Google / Ollama）。</span>
+                </div>
+              )}
+
+              {/* Embedding Stats */}
+              <EmbeddingStatsBar stats={data?.data?.embeddingStats} />
+
+              {/* Re-index button */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => reindexMutation.mutate()}
+                  disabled={reindexMutation.isPending}
+                  className="
+                    h-9 px-4 rounded-lg text-xs font-medium
+                    bg-background-secondary text-text-secondary border border-border
+                    hover:bg-background-hover hover:text-text-primary
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    transition-colors inline-flex items-center gap-1.5
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-600 focus-visible:ring-offset-2 focus-visible:ring-offset-background-tertiary
+                  "
+                  aria-label="重新索引所有文件"
+                >
+                  {reindexMutation.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Database className="w-3.5 h-3.5" />
+                  )}
+                  重新索引所有文件
+                </button>
+                {reindexMutation.isSuccess && (
+                  <span className="text-xs text-green-400">
+                    {(reindexMutation.data as { data?: { message?: string } })?.data?.message ?? '已排隊'}
+                  </span>
+                )}
+                {reindexMutation.isError && (
+                  <span className="text-xs text-error">
+                    {(reindexMutation.error as Error)?.message ?? '重新索引失敗'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Save Button */}
         <div className="pt-2">
           <button
@@ -387,5 +517,45 @@ export function AISettingsSection() {
         </div>
       </div>
     </section>
+  );
+}
+
+// ============================================
+// Embedding Stats Sub-component
+// ============================================
+
+interface EmbeddingStats {
+  readonly totalDocs: number;
+  readonly embeddedDocs: number;
+  readonly totalChunks: number;
+  readonly embeddedChunks: number;
+}
+
+function EmbeddingStatsBar({ stats }: { readonly stats?: EmbeddingStats | unknown }) {
+  if (!stats || typeof stats !== 'object') return null;
+
+  const s = stats as EmbeddingStats;
+  if (s.totalDocs === 0 && s.totalChunks === 0) return null;
+
+  const pct = s.totalDocs > 0 ? Math.round((s.embeddedDocs / s.totalDocs) * 100) : 0;
+
+  return (
+    <div className="bg-background-secondary rounded-lg p-3">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-text-muted">索引狀態</span>
+        <span className="text-text-secondary font-medium">
+          {s.embeddedDocs} / {s.totalDocs} 文件已索引
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 bg-background rounded-full overflow-hidden">
+        <div
+          className="h-full bg-accent-600 rounded-full transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="mt-1 text-xs text-text-muted">
+        {s.embeddedChunks} / {s.totalChunks} 區塊已嵌入
+      </p>
+    </div>
   );
 }

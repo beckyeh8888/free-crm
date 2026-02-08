@@ -18,6 +18,8 @@ function createMockDocument(overrides: Partial<Document> = {}): Document {
     filePath: null,
     fileSize: null,
     mimeType: null,
+    extractionStatus: null,
+    extractedAt: null,
     createdAt: '2026-01-15T00:00:00Z',
     updatedAt: '2026-01-15T00:00:00Z',
     organizationId: 'org-1',

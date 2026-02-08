@@ -28,6 +28,8 @@ interface RawAISettings {
   model?: string;
   ollamaEndpoint?: string;
   features?: string;
+  embeddingProvider?: string;
+  embeddingModel?: string;
 }
 
 async function getRawSettings(organizationId: string): Promise<RawAISettings> {
@@ -49,6 +51,8 @@ async function getRawSettings(organizationId: string): Promise<RawAISettings> {
     model: map[AI_SETTING_KEYS.MODEL] ?? undefined,
     ollamaEndpoint: map[AI_SETTING_KEYS.OLLAMA_ENDPOINT] ?? undefined,
     features: map[AI_SETTING_KEYS.FEATURES] ?? undefined,
+    embeddingProvider: map[AI_SETTING_KEYS.EMBEDDING_PROVIDER] ?? undefined,
+    embeddingModel: map[AI_SETTING_KEYS.EMBEDDING_MODEL] ?? undefined,
   };
 }
 
@@ -104,7 +108,7 @@ export async function getAIConfig(organizationId: string): Promise<AIConfig | nu
 
   if (!raw.provider) return null;
 
-  const defaultFeatures = { chat: true, document_analysis: true, email_draft: true, insights: true };
+  const defaultFeatures: Record<AIFeature, boolean> = { chat: true, document_analysis: true, email_draft: true, insights: true, rag: false };
   let features = defaultFeatures;
   if (raw.features) {
     try {
@@ -120,6 +124,8 @@ export async function getAIConfig(organizationId: string): Promise<AIConfig | nu
     features,
     ollamaEndpoint: raw.ollamaEndpoint,
     hasApiKey: !!raw.apiKey,
+    embeddingProvider: raw.embeddingProvider as AIProvider | undefined,
+    embeddingModel: raw.embeddingModel,
   };
 }
 
@@ -149,9 +155,20 @@ export async function requireAIFeature(organizationId: string, feature: AIFeatur
       document_analysis: '文件智能分析',
       email_draft: 'Email 草稿生成',
       insights: '銷售洞察',
+      rag: 'RAG 文件檢索',
     };
     throw new AIFeatureDisabledError(featureLabels[feature]);
   }
+}
+
+/**
+ * Check if a specific AI feature is enabled (non-throwing).
+ * Returns false if AI is not configured or feature is disabled.
+ */
+export async function isFeatureEnabled(organizationId: string, feature: AIFeature): Promise<boolean> {
+  const config = await getAIConfig(organizationId);
+  if (!config || !config.hasApiKey) return false;
+  return !!config.features[feature];
 }
 
 /**

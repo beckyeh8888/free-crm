@@ -263,6 +263,9 @@ model Customer {
   email          String?
   phone          String?
   company        String?
+  companyPhone   String?
+  fax            String?
+  taxId          String?
   type           String   @default("B2B") // B2B, B2C
   status         String   @default("active") // active, inactive, lead
   notes          String?
@@ -322,6 +325,8 @@ model Deal {
   probability Int       @default(0) // 0-100
   closeDate   DateTime?
   closedAt    DateTime? // Actual close date
+  lossReason  String?   // price, competition, timing, need, budget, other
+  lossNotes   String?
   notes       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -350,15 +355,17 @@ model Deal {
 // ============================================
 
 model Document {
-  id             String   @id @default(cuid())
-  name           String
-  type           String   // contract, email, meeting_notes, quotation
-  content        String?  // Document content (text)
-  filePath       String?  // File path
-  fileSize       Int?
-  mimeType       String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String    @id @default(cuid())
+  name             String
+  type             String    // contract, email, meeting_notes, quotation
+  content          String?   // Document content (text)
+  filePath         String?   // File path
+  fileSize         Int?
+  mimeType         String?
+  extractionStatus String?   // pending, processing, completed, failed, unsupported
+  extractedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   // Multi-tenant Relations
   organizationId String
@@ -368,6 +375,7 @@ model Document {
   customerId     String?
   customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   analyses       DocumentAnalysis[]
+  chunks         DocumentChunk[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -390,6 +398,31 @@ model DocumentAnalysis {
   document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+}
+
+model DocumentChunk {
+  id             String    @id @default(cuid())
+  content        String    // Chunk text content
+  chunkIndex     Int       // Position in document (0, 1, 2...)
+  startOffset    Int       // Character offset in original document
+  endOffset      Int       // Character end offset
+  metadata       String?   // JSON: { section, heading }
+
+  // Embedding fields (populated by Phase 3 embedding pipeline)
+  embedding      String?   // JSON serialized Float32Array
+  embeddingModel String?   // Model used to generate embedding
+  embeddingDims  Int?      // Dimensionality (768, 1024, 1536)
+  embeddedAt     DateTime?
+
+  // Relations
+  documentId     String
+  document       Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  organizationId String
+
+  createdAt      DateTime  @default(now())
+
+  @@index([documentId])
+  @@index([organizationId])
 }
 
 // ============================================

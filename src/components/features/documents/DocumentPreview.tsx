@@ -5,6 +5,7 @@
  * WCAG 2.2 AAA Compliant
  */
 
+import { useRouter } from 'next/navigation';
 import {
   FileText,
   Mail,
@@ -14,6 +15,10 @@ import {
   Trash2,
   Pencil,
   Download,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
 } from 'lucide-react';
 import type { Document, DocumentAnalysis } from '@/hooks/useDocuments';
 import { AIAnalysisPanel } from './AIAnalysisPanel';
@@ -85,6 +90,31 @@ function ActionButton({ icon: Icon, label, onClick, variant = 'default' }: Actio
   );
 }
 
+function ExtractionStatusBadge({ status }: { readonly status: string | null }) {
+  if (!status) return null;
+
+  const configs: Record<string, { icon: React.ComponentType<{ readonly className?: string }>; label: string; className: string }> = {
+    pending: { icon: Clock, label: '等待萃取', className: 'text-amber-400 bg-amber-400/10' },
+    processing: { icon: Loader2, label: '萃取中', className: 'text-blue-400 bg-blue-400/10' },
+    completed: { icon: CheckCircle2, label: '已萃取', className: 'text-green-400 bg-green-400/10' },
+    failed: { icon: AlertTriangle, label: '萃取失敗', className: 'text-error bg-error/10' },
+    unsupported: { icon: AlertTriangle, label: '不支援', className: 'text-text-muted bg-background-secondary' },
+  };
+
+  const config = configs[status];
+  if (!config) return null;
+
+  const StatusIcon = config.icon;
+  const isSpinning = status === 'processing';
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${config.className}`}>
+      <StatusIcon className={`w-3 h-3 ${isSpinning ? 'animate-spin' : ''}`} aria-hidden="true" />
+      {config.label}
+    </span>
+  );
+}
+
 export function DocumentPreview({
   document,
   onAnalyze,
@@ -93,6 +123,7 @@ export function DocumentPreview({
   onDownload,
   isAnalyzing,
 }: DocumentPreviewProps) {
+  const router = useRouter();
   const Icon = typeIcons[document.type] ?? FileText;
   const typeLabel = typeLabels[document.type] ?? document.type;
   const latestAnalysis = document.analyses?.[0] ?? null;
@@ -110,10 +141,26 @@ export function DocumentPreview({
           <h2 className="text-lg font-semibold text-text-primary truncate">
             {document.name}
           </h2>
-          <p className="text-sm text-text-muted mt-0.5">
-            {typeLabel}
-            {document.customer?.name ? ` · ${document.customer.name}` : ''}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-sm text-text-muted">
+              {typeLabel}
+              {document.customer?.name ? (
+                <>
+                  {' · '}
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/customers?id=${document.customer?.id}`)}
+                    className="text-accent-500 hover:text-accent-400 hover:underline"
+                  >
+                    {document.customer.name}
+                  </button>
+                </>
+              ) : ''}
+            </p>
+            {document.extractionStatus && (
+              <ExtractionStatusBadge status={document.extractionStatus} />
+            )}
+          </div>
           <p className="text-xs text-text-muted mt-0.5">
             {formatDate(document.createdAt)}
             {document.fileSize ? ` · ${formatFileSize(document.fileSize)}` : ''}
@@ -157,6 +204,12 @@ export function DocumentPreview({
                 {document.mimeType ?? '未知類型'}
                 {document.fileSize ? ` · ${formatFileSize(document.fileSize)}` : ''}
               </p>
+              {(document.extractionStatus === 'pending' || document.extractionStatus === 'processing') && (
+                <p className="text-xs text-blue-400 mt-1">文字萃取中，完成後即可進行 AI 分析</p>
+              )}
+              {document.extractionStatus === 'unsupported' && (
+                <p className="text-xs text-amber-400 mt-1">此檔案格式無法自動萃取文字（可能為掃描 PDF）</p>
+              )}
             </div>
           </div>
         </div>

@@ -9,7 +9,7 @@ import { prisma } from './prisma';
 
 interface CreateNotificationParams {
   readonly userId: string;
-  readonly type: 'deal_stage_change' | 'task_reminder' | 'customer_assign' | 'new_document';
+  readonly type: 'deal_stage_change' | 'task_reminder' | 'customer_assign' | 'new_document' | 'document_analysis' | 'document_embedding';
   readonly title: string;
   readonly message: string;
   readonly linkUrl?: string;

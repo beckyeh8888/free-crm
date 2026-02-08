@@ -125,6 +125,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       filePath: true,
       fileSize: true,
       mimeType: true,
+      extractionStatus: true,
+      extractedAt: true,
       createdAt: true,
       updatedAt: true,
       organizationId: true,

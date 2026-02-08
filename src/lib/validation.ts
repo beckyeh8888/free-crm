@@ -88,14 +88,25 @@ export const customerFilterSchema = z.object({
 // Customer CRUD Schemas
 // ============================================
 
+export const primaryContactSchema = z.object({
+  name: z.string().min(1, '請輸入聯絡人姓名').max(100),
+  email: emailSchema.optional(),
+  phone: phoneSchema.optional(),
+  title: z.string().max(100).optional(),
+});
+
 export const createCustomerSchema = z.object({
   name: z.string().min(1, '請輸入客戶名稱').max(100),
   email: emailSchema.optional(),
   phone: phoneSchema.optional(),
   company: z.string().max(200).optional(),
+  companyPhone: phoneSchema.optional(),
+  fax: phoneSchema.optional(),
+  taxId: z.string().max(20).optional(),
   type: z.enum(['B2B', 'B2C']).default('B2B'),
   status: z.enum(['active', 'inactive', 'lead']).default('active'),
   notes: z.string().max(5000).optional(),
+  primaryContact: primaryContactSchema.optional(),
   // Multi-tenant fields (Zod v4: z.cuid())
   organizationId: z.cuid().optional(), // Can be provided or inferred from context
   assignedToId: z.cuid().optional(), // Assigned sales rep
@@ -152,6 +163,10 @@ export const createDealSchema = z.object({
   assignedToId: z.cuid().optional(), // Assigned sales rep
 });
 
+export const lossReasonEnum = z.enum([
+  'price', 'competition', 'timing', 'need', 'budget', 'other',
+]);
+
 export const updateDealSchema = z.object({
   title: z.string().min(1, '請輸入商機名稱').max(200).optional(),
   value: z.number().min(0).optional(),
@@ -161,6 +176,8 @@ export const updateDealSchema = z.object({
   closeDate: z.iso.datetime().optional().nullable(),
   notes: z.string().max(5000).optional(),
   assignedToId: z.cuid().optional().nullable(), // Can reassign
+  lossReason: lossReasonEnum.optional().nullable(),
+  lossNotes: z.string().max(2000).optional().nullable(),
 });
 
 export const dealFilterSchema = z.object({
@@ -190,14 +207,20 @@ export const createDocumentSchema = z.object({
   name: z.string().min(1, '請輸入文件名稱').max(200),
   type: documentTypeEnum.default('contract'),
   content: z.string().max(50000).optional(),
-  customerId: z.cuid({ message: '無效的客戶 ID' }).optional().nullable(),
+  customerId: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.cuid({ message: '無效的客戶 ID' }).optional().nullable(),
+  ),
 });
 
 export const updateDocumentSchema = z.object({
   name: z.string().min(1, '請輸入文件名稱').max(200).optional(),
   type: documentTypeEnum.optional(),
   content: z.string().max(50000).optional(),
-  customerId: z.cuid({ message: '無效的客戶 ID' }).optional().nullable(),
+  customerId: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.cuid({ message: '無效的客戶 ID' }).optional().nullable(),
+  ),
 });
 
 export const documentFilterSchema = z.object({
@@ -407,7 +430,10 @@ export const aiConfigSchema = z.object({
     document_analysis: z.boolean().default(true),
     email_draft: z.boolean().default(true),
     insights: z.boolean().default(true),
+    rag: z.boolean().default(false),
   }).optional(),
+  embeddingProvider: aiProviderSchema.optional(),
+  embeddingModel: z.string().optional(),
 });
 
 export const aiChatMessageSchema = z.object({
@@ -425,6 +451,13 @@ export const emailDraftSchema = z.object({
   context: z.string().max(5000).optional(),
 });
 
+export const documentSearchSchema = z.object({
+  query: z.string().min(1, '搜尋內容不可為空').max(1000),
+  customerId: z.cuid().optional(),
+  topK: z.coerce.number().min(1).max(20).default(5),
+});
+
 export type AIConfig = z.infer<typeof aiConfigSchema>;
 export type AIChatMessage = z.infer<typeof aiChatMessageSchema>;
 export type EmailDraft = z.infer<typeof emailDraftSchema>;
+export type DocumentSearch = z.infer<typeof documentSearchSchema>;

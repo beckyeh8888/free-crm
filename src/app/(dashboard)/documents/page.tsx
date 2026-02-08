@@ -6,8 +6,9 @@
  * WCAG 2.2 AAA Compliant
  */
 
-import { useState, useCallback } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Plus, Search, Sparkles } from 'lucide-react';
 import {
   useDocuments,
   useDocument,
@@ -21,6 +22,7 @@ import {
 import { DocumentRow } from '@/components/features/documents/DocumentRow';
 import { DocumentForm, type DocumentFormData } from '@/components/features/documents/DocumentForm';
 import { DocumentPreview } from '@/components/features/documents/DocumentPreview';
+import { useDocumentSearch, type SearchResult } from '@/hooks/useDocumentSearch';
 
 // ============================================
 // Constants
@@ -161,12 +163,26 @@ function EmptyPreview() {
 // ============================================
 
 export default function DocumentsPage() {
+  const searchParams = useSearchParams();
+  const urlId = searchParams.get('id');
+
   // State
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [semanticMode, setSemanticMode] = useState(false);
+  const [semanticResults, setSemanticResults] = useState<readonly SearchResult[]>([]);
+
+  // Auto-select document from URL ?id= param — syncing external URL state into React
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (urlId && !selectedId) {
+      setSelectedId(urlId);
+    }
+  }, [urlId, selectedId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Data hooks
   const { data: listData, isLoading } = useDocuments({
@@ -184,6 +200,7 @@ export default function DocumentsPage() {
   const deleteMutation = useDeleteDocument();
   const analyzeMutation = useAnalyzeDocument();
   const downloadMutation = useDocumentDownload();
+  const searchMutation = useDocumentSearch();
 
   // Derived data
   const documents = listData?.data ?? [];
@@ -228,10 +245,28 @@ export default function DocumentsPage() {
     setShowForm(true);
   }, []);
 
+  const handleSemanticSearch = useCallback((query: string) => {
+    if (!query.trim()) {
+      setSemanticResults([]);
+      return;
+    }
+    searchMutation.mutate(
+      { query },
+      {
+        onSuccess: (response) => {
+          setSemanticResults(response?.data?.results ?? []);
+        },
+      }
+    );
+  }, [searchMutation]);
+
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setPage(1);
-  }, []);
+    if (semanticMode) {
+      setSemanticResults([]);
+    }
+  }, [semanticMode]);
 
   const handleTypeChange = useCallback((key: string) => {
     setTypeFilter(key);
@@ -249,13 +284,36 @@ export default function DocumentsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
                 type="search"
-                placeholder="搜尋文件..."
+                placeholder={semanticMode ? '語意搜尋文件內容...' : '搜尋文件...'}
                 value={search}
                 onChange={handleSearchChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && semanticMode && search.trim()) {
+                    handleSemanticSearch(search);
+                  }
+                }}
                 className="form-input pl-9 w-full"
-                aria-label="搜尋文件"
+                aria-label={semanticMode ? '語意搜尋文件' : '搜尋文件'}
               />
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSemanticMode(!semanticMode);
+                setSemanticResults([]);
+              }}
+              className={`
+                flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors min-h-[44px]
+                ${semanticMode
+                  ? 'bg-accent-600 text-white'
+                  : 'bg-background-tertiary text-text-secondary border border-border hover:bg-background-hover'}
+              `}
+              aria-label={semanticMode ? '切換為一般搜尋' : '切換為語意搜尋'}
+              title="語意搜尋（需設定 Embedding）"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">語意</span>
+            </button>
             <button
               type="button"
               onClick={handleShowForm}
@@ -287,6 +345,37 @@ export default function DocumentsPage() {
               </button>
             ))}
           </div>
+
+          {/* Semantic Search Results */}
+          {semanticMode && semanticResults.length > 0 && (
+            <div className="mb-3 bg-background-tertiary border border-accent-600/30 rounded-xl p-3">
+              <h3 className="text-xs font-medium text-accent-500 mb-2">
+                語意搜尋結果（{semanticResults.length} 筆）
+              </h3>
+              <div className="space-y-2 max-h-48 overflow-auto">
+                {semanticResults.map((result) => (
+                  <button
+                    key={`${result.documentId}-${result.score}`}
+                    type="button"
+                    onClick={() => handleSelect(result.documentId)}
+                    className="w-full text-left p-2 rounded-lg hover:bg-background-hover transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-text-primary font-medium truncate">{result.documentName}</span>
+                      <span className="text-xs text-text-muted ml-2 shrink-0">{Math.round(result.score * 100)}%</span>
+                    </div>
+                    <p className="text-xs text-text-muted mt-0.5 line-clamp-2">{result.content}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {semanticMode && searchMutation.isError && (
+            <div className="mb-3 text-xs text-error bg-error/10 rounded-lg p-3">
+              {(searchMutation.error as Error)?.message || '語意搜尋失敗。請確認已設定 Embedding。'}
+            </div>
+          )}
 
           {/* Document List */}
           <div className="flex-1 overflow-auto bg-background-tertiary border border-border rounded-xl flex flex-col">

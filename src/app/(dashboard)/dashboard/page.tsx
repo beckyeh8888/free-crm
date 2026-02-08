@@ -5,12 +5,13 @@
  * WCAG 2.2 AAA Compliant
  */
 
-import { Users, Handshake, FileText, DollarSign } from 'lucide-react';
+import { Users, Handshake, FileText, DollarSign, TrendingUp } from 'lucide-react';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { StatCard } from '@/components/features/dashboard/StatCard';
 import { PipelineOverview } from '@/components/features/dashboard/PipelineOverview';
 import { RecentActivity } from '@/components/features/dashboard/RecentActivity';
 import { AIInsightsCard } from '@/components/features/ai';
+import { MyDaySection } from '@/components/features/dashboard/MyDaySection';
 
 function formatCurrency(value: number): string {
   if (value >= 1000000) {
@@ -39,31 +40,51 @@ export default function DashboardPage() {
 
   const stats = data?.data;
 
+  // Calculate open pipeline value (all stages except closed_won and closed_lost)
+  const openStages = ['lead', 'qualified', 'proposal', 'negotiation'];
+  const pipelineValue = (stats?.pipelineStages ?? [])
+    .filter((s) => openStages.includes(s.stage))
+    .reduce((sum, s) => sum + s.value, 0);
+
   return (
     <div className="space-y-6">
+      {/* My Day — salesperson's daily overview */}
+      <MyDaySection />
+
       {/* Stat Cards */}
       <section aria-labelledby="stats-heading">
         <h2 id="stats-heading" className="sr-only">統計數據</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
           <StatCard
             label="客戶總數"
             value={stats?.customerCount ?? 0}
             icon={Users}
+            href="/customers"
           />
           <StatCard
             label="進行中商機"
             value={stats?.dealCount ?? 0}
             icon={Handshake}
+            href="/deals"
+          />
+          <StatCard
+            label="管線價值"
+            value={formatCurrency(pipelineValue)}
+            icon={TrendingUp}
+            trend="進行中商機總額"
+            href="/deals"
+          />
+          <StatCard
+            label="已成交營收"
+            value={formatCurrency(stats?.totalRevenue ?? 0)}
+            icon={DollarSign}
+            href="/reports"
           />
           <StatCard
             label="文件數量"
             value={stats?.documentCount ?? 0}
             icon={FileText}
-          />
-          <StatCard
-            label="總營收"
-            value={formatCurrency(stats?.totalRevenue ?? 0)}
-            icon={DollarSign}
+            href="/documents"
           />
         </div>
       </section>
@@ -80,12 +101,12 @@ export default function DashboardPage() {
   );
 }
 
-const STAT_SKELETON_KEYS = ['stat-1', 'stat-2', 'stat-3', 'stat-4'] as const;
+const STAT_SKELETON_KEYS = ['stat-1', 'stat-2', 'stat-3', 'stat-4', 'stat-5'] as const;
 
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         {STAT_SKELETON_KEYS.map((key) => (
           <div key={key} className="h-24 bg-background-tertiary border border-border rounded-xl" />
         ))}

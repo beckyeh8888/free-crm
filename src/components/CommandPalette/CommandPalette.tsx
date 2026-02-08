@@ -45,7 +45,7 @@ const typeIcons: Record<RecentItemType, React.ElementType> = {
 
 // Search result types
 interface SearchResults {
-  readonly customers: ReadonlyArray<{ id: string; name: string; company: string | null; type: string }>;
+  readonly customers: ReadonlyArray<{ id: string; name: string; company: string | null; companyPhone: string | null; type: string; email: string | null; phone: string | null }>;
   readonly deals: ReadonlyArray<{ id: string; title: string; value: number; stage: string }>;
   readonly contacts: ReadonlyArray<{ id: string; name: string; email: string | null; customerName: string | null }>;
   readonly documents: ReadonlyArray<{ id: string; name: string; type: string }>;
@@ -107,11 +107,14 @@ export function CommandPalette() {
     } else if (query && searchResults) {
       // Search mode: show search results
       searchResults.customers.forEach((c) => {
+        const parts = c.type === 'B2B'
+          ? [c.company, c.companyPhone].filter(Boolean)
+          : [c.company, c.phone, c.email].filter(Boolean);
         items.push({
           id: c.id,
           type: 'customer',
           label: c.name,
-          description: c.company || undefined,
+          description: parts.join(' · ') || undefined,
           path: `/customers/${c.id}`,
           icon: Users,
         });

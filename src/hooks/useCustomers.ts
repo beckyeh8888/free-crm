@@ -11,6 +11,9 @@ export interface Customer {
   readonly email: string | null;
   readonly phone: string | null;
   readonly company: string | null;
+  readonly companyPhone: string | null;
+  readonly fax: string | null;
+  readonly taxId: string | null;
   readonly type: string;
   readonly status: string;
   readonly notes: string | null;

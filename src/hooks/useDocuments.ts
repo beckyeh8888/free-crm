@@ -13,6 +13,8 @@ export interface Document {
   readonly filePath: string | null;
   readonly fileSize: number | null;
   readonly mimeType: string | null;
+  readonly extractionStatus: string | null;
+  readonly extractedAt: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly organizationId: string;

@@ -26,7 +26,10 @@ interface SearchResult {
     readonly id: string;
     readonly name: string;
     readonly company: string | null;
+    readonly companyPhone: string | null;
     readonly type: string;
+    readonly email: string | null;
+    readonly phone: string | null;
   }>;
   readonly deals: ReadonlyArray<{
     readonly id: string;
@@ -94,14 +97,19 @@ export async function GET(request: NextRequest) {
           OR: [
             { name: { contains: query } },
             { company: { contains: query } },
+            { companyPhone: { contains: query } },
             { email: { contains: query } },
+            { phone: { contains: query } },
           ],
         },
         select: {
           id: true,
           name: true,
           company: true,
+          companyPhone: true,
           type: true,
+          email: true,
+          phone: true,
         },
         take: limit,
         orderBy: { updatedAt: 'desc' },

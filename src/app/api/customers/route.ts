@@ -101,6 +101,9 @@ export async function GET(request: NextRequest) {
         email: true,
         phone: true,
         company: true,
+        companyPhone: true,
+        fax: true,
+        taxId: true,
         type: true,
         status: true,
         createdAt: true,
@@ -187,29 +190,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create customer
-    const customer = await prisma.customer.create({
-      data: {
-        ...data,
-        organizationId,
-        createdById: session.user.id,
-        assignedToId: data.assignedToId || session.user.id, // Default to creator
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        company: true,
-        type: true,
-        status: true,
-        notes: true,
-        organizationId: true,
-        createdById: true,
-        assignedToId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    // Extract primaryContact before creating customer
+    const { primaryContact, ...customerData } = data;
+
+    // Create customer (+ optional primary contact) atomically
+    const customer = await prisma.$transaction(async (tx) => {
+      const created = await tx.customer.create({
+        data: {
+          ...customerData,
+          organizationId,
+          createdById: session.user.id,
+          assignedToId: customerData.assignedToId || session.user.id,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          company: true,
+          companyPhone: true,
+          fax: true,
+          taxId: true,
+          type: true,
+          status: true,
+          notes: true,
+          organizationId: true,
+          createdById: true,
+          assignedToId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      // Auto-create primary contact if provided
+      if (primaryContact?.name) {
+        await tx.contact.create({
+          data: {
+            name: primaryContact.name,
+            email: primaryContact.email || null,
+            phone: primaryContact.phone || null,
+            title: primaryContact.title || null,
+            isPrimary: true,
+            customerId: created.id,
+          },
+        });
+      }
+
+      return created;
     });
 
     // Log audit event

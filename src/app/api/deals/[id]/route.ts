@@ -57,6 +57,8 @@ function buildDealUpdateData(data: UpdateDealData, isClosing: boolean) {
     }),
     ...(data.notes !== undefined && { notes: data.notes }),
     ...(data.assignedToId !== undefined && { assignedToId: data.assignedToId }),
+    ...(data.lossReason !== undefined && { lossReason: data.lossReason }),
+    ...(data.lossNotes !== undefined && { lossNotes: data.lossNotes }),
     ...(isClosing && { closedAt: new Date() }),
   };
 }
@@ -140,6 +142,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       closeDate: true,
       closedAt: true,
       notes: true,
+      lossReason: true,
+      lossNotes: true,
       createdAt: true,
       updatedAt: true,
       createdById: true,
@@ -256,6 +260,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         closeDate: true,
         closedAt: true,
         notes: true,
+        lossReason: true,
+        lossNotes: true,
         createdAt: true,
         updatedAt: true,
         createdById: true,

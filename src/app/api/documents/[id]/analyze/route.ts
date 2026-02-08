@@ -145,7 +145,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   // Check if document has content to analyze
   if (!document.content || document.content.trim().length === 0) {
-    return errorResponse('VALIDATION_ERROR', '文件內容為空，無法分析');
+    // If the document has a file but text hasn't been extracted yet, provide a helpful message
+    const fullDoc = await prisma.document.findUnique({
+      where: { id: documentId },
+      select: { filePath: true, extractionStatus: true },
+    });
+
+    if (fullDoc?.filePath) {
+      if (fullDoc.extractionStatus === 'pending' || fullDoc.extractionStatus === 'processing') {
+        return errorResponse('VALIDATION_ERROR', '文件文字萃取中，請稍候再進行分析。');
+      }
+      if (fullDoc.extractionStatus === 'unsupported') {
+        return errorResponse('VALIDATION_ERROR', '此檔案格式不支援文字萃取（可能為掃描 PDF）。請嘗試手動輸入文字內容。');
+      }
+      if (fullDoc.extractionStatus === 'failed') {
+        return errorResponse('VALIDATION_ERROR', '文字萃取失敗。請重新上傳檔案或手動輸入文字內容。');
+      }
+    }
+
+    return errorResponse('VALIDATION_ERROR', '文件內容為空，無法分析。請輸入文字內容或上傳包含文字的檔案。');
   }
 
   // Check if AI is configured for this organization

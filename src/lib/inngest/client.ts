@@ -55,6 +55,48 @@ export interface DocumentAnalysisFailedEvent {
 }
 
 // ============================================
+// RAG Pipeline Events
+// ============================================
+
+export interface DocumentTextExtractEvent {
+  name: 'document/text.extract';
+  data: {
+    documentId: string;
+    organizationId: string;
+    filePath: string;
+    mimeType: string;
+  };
+}
+
+export interface DocumentTextExtractCompleteEvent {
+  name: 'document/text.extract.completed';
+  data: {
+    documentId: string;
+    organizationId: string;
+    wordCount: number;
+    chunkCount: number;
+  };
+}
+
+export interface DocumentEmbedEvent {
+  name: 'document/embed.requested';
+  data: {
+    documentId: string;
+    organizationId: string;
+  };
+}
+
+export interface DocumentEmbedCompleteEvent {
+  name: 'document/embed.completed';
+  data: {
+    documentId: string;
+    organizationId: string;
+    chunkCount: number;
+    embeddingModel: string;
+  };
+}
+
+// ============================================
 // Notification Events (Sprint 7)
 // ============================================
 
@@ -103,6 +145,10 @@ export type FreeCRMEvents =
   | DocumentAnalyzeEvent
   | DocumentAnalysisCompleteEvent
   | DocumentAnalysisFailedEvent
+  | DocumentTextExtractEvent
+  | DocumentTextExtractCompleteEvent
+  | DocumentEmbedEvent
+  | DocumentEmbedCompleteEvent
   | TaskReminderEvent
   | DealStageChangedEvent
   | UserCreatedEvent;

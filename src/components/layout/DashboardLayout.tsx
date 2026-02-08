@@ -12,6 +12,7 @@ import { MobileTabBar } from './MobileTabBar';
 import { CommandPaletteProvider, CommandPalette } from '@/components/CommandPalette';
 import { KeyboardShortcutsProvider } from '@/hooks/useKeyboardShortcuts';
 import { AIChatPanel } from '@/components/features/ai';
+import { QuickLogButton } from '@/components/features/quick-log/QuickLogButton';
 
 interface DashboardLayoutProps {
   readonly children: ReactNode;
@@ -54,6 +55,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   {children}
                 </div>
               </main>
+
+              {/* Quick Log FAB */}
+              <QuickLogButton className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-30" />
 
               {/* Mobile Tab Bar */}
               <MobileTabBar />

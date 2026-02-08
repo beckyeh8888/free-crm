@@ -5,9 +5,10 @@
  * WCAG 2.2 AAA Compliant
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
-import { useCustomers, useCreateCustomer, type Customer } from '@/hooks/useCustomers';
+import { useCustomers, useCreateCustomer, useCustomer, type Customer } from '@/hooks/useCustomers';
 import { CustomerRow } from '@/components/features/customers/CustomerRow';
 import { CustomerForm, type CustomerFormData } from '@/components/features/customers/CustomerForm';
 import { CustomerDetailPanel } from '@/components/features/customers/CustomerDetailPanel';
@@ -20,11 +21,24 @@ const statusFilters = [
 ];
 
 export default function CustomersPage() {
+  const searchParams = useSearchParams();
+  const urlId = searchParams.get('id');
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  // Auto-open detail panel from URL ?id= param — syncing external URL state into React
+  const { data: urlCustomerData } = useCustomer(urlId ?? '');
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (urlId && urlCustomerData?.data && !selectedCustomer) {
+      setSelectedCustomer(urlCustomerData.data as Customer);
+    }
+  }, [urlId, urlCustomerData, selectedCustomer]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const { data, isLoading } = useCustomers({
     page,

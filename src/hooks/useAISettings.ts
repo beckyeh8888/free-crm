@@ -10,11 +10,19 @@ import type { AIConfig } from '@/lib/ai/types';
 // Types
 // ============================================
 
+interface EmbeddingStats {
+  readonly totalDocs: number;
+  readonly embeddedDocs: number;
+  readonly totalChunks: number;
+  readonly embeddedChunks: number;
+}
+
 interface AISettingsResponse {
   readonly success: boolean;
   readonly data: {
     readonly config: AIConfig | null;
     readonly maskedApiKey: string | null;
+    readonly embeddingStats?: EmbeddingStats;
   };
 }
 
@@ -61,7 +69,10 @@ export function useUpdateAIConfig() {
         readonly document_analysis: boolean;
         readonly email_draft: boolean;
         readonly insights: boolean;
+        readonly rag: boolean;
       };
+      readonly embeddingProvider?: string;
+      readonly embeddingModel?: string;
     }) => apiClient.put<AISettingsResponse>('/api/ai/settings', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-config'] });
